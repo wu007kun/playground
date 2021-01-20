@@ -9,7 +9,7 @@
   </div>
 </template>
 <script>
-import canlib from './canlib'
+import CanLib from './CanLib/index'
 let sandbox = null
 let bgImage = null
 const entities = []
@@ -23,6 +23,26 @@ export default {
   },
   mounted () {
     this.initCanvas()
+    const el = new CanLib.Polygon({
+      sandbox,
+      points: [
+        [50, 50],
+        [100, 40],
+        [150, 100],
+        [130, 150],
+        [50, 200],
+        [30, 100]
+      ],
+      color: '#ff99cc'
+    })
+    sandbox.add(el)
+    sandbox.setActive(el)
+    const int = setInterval(() => {
+      el.points[2][0] += 5
+      if (el.points[2][0] > 450) {
+        clearInterval(int)
+      }
+    }, 1000)
     // const img = require('./bg.jpg')
     // this.initBgImage(img)
     // this.drawRect()
@@ -38,8 +58,8 @@ export default {
   methods: {
     initCanvas () {
       const c = document.getElementById('canvas-elem')
-      sandbox = new canlib.Sandbox(c, { width: this.size, height: this.size })
-      this.twinkle()
+      sandbox = new CanLib.Sandbox(c, { width: this.size, height: this.size })
+      // this.twinkle()
     },
     initBgImage (src) {
       return new Promise((resolve, reject) => {
@@ -52,7 +72,7 @@ export default {
           } else {
             w = this.size / image.height * image.width
           }
-          bgImage = new canlib.BgImage({ sandbox, x: 0, y: 0, width: w, height: h, src: image })
+          bgImage = new CanLib.BgImage({ sandbox, x: 0, y: 0, width: w, height: h, src: image })
           sandbox.add(bgImage)
           resolve()
         }
@@ -70,7 +90,7 @@ export default {
       }, 3000)
     },
     drawPolygon (params) {
-      const polygon = new canlib.Polygon({
+      const polygon = new CanLib.Polygon({
         sandbox,
         points: params.points,
         color: params.color
@@ -92,8 +112,12 @@ export default {
         sandbox.off('click', this.pickPolygon)
         sandbox.off('contextmenu', this.backstep)
         this.newPoints = []
+        const et = this.newEntity
         this.newEntity = null
-        console.log('结束')
+        et.on('click', () => {
+          console.log('click entity')
+          sandbox.setActive(et)
+        })
         document.removeEventListener('keyup', this.judgePolygonEnd)
       }
     },
@@ -122,7 +146,7 @@ export default {
       }
     },
     drawRect (params) {
-      const rect = new canlib.Rect({
+      const rect = new CanLib.Rect({
         sandbox,
         xmin: params.xmin,
         ymin: params.ymin,
@@ -132,12 +156,6 @@ export default {
       })
       sandbox.add(rect)
       entities.push(rect)
-      rect.on('click', () => {
-        console.log('点击了矩形')
-      })
-      rect.on('contextmenu', () => {
-        console.log('右键了矩形')
-      })
       return rect
     },
     addRect () {
@@ -168,6 +186,12 @@ export default {
           ymin,
           ymax
         })
+        const et = this.newEntity
+        this.newEntity = null
+        et.on('click', () => {
+          console.log('click entity')
+          sandbox.setActive(et)
+        })
         this.newPoints = []
         this.newEntity = null
         sandbox.off('click', this.pickRect)
@@ -187,11 +211,11 @@ export default {
       sandbox.on('click', this.drawCtrlCircle)
     },
     drawCtrlCircle (e) {
-      const cc = new canlib.CtrlCircle({
+      const cc = new CanLib.CtrlCircle({
         sandbox,
         x: e[0],
         y: e[1],
-        radius: 10,
+        radius: 6,
         color: '#409eff'
       })
       sandbox.add(cc)
