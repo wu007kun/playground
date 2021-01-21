@@ -3,11 +3,13 @@ class Polygon {
   constructor ({ sandbox, points, color, zIndex }) {
     this.sandbox = sandbox
     this.ctx = sandbox.ctx
+    this.entityType = 'polygon'
     this.points = [...points]
     this.color = color || '#fff'
     this.zIndex = zIndex || 0
     this.id = this.sandbox.getEntityId()
     this.visible = true
+    this.judgeBy = 'points'
   }
 
   render () {

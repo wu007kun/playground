@@ -2,6 +2,7 @@ export default class Rect {
   constructor ({ sandbox, xmin, ymin, xmax, ymax, color, zIndex }) {
     this.sandbox = sandbox
     this.ctx = sandbox.ctx
+    this.entityType = 'rect'
     this.points = [
       [xmin, ymin],
       [xmax, ymin],
@@ -12,6 +13,7 @@ export default class Rect {
     this.zIndex = zIndex || 0
     this.id = this.sandbox.getEntityId()
     this.visible = true
+    this.judgeBy = 'points'
   }
 
   render () {

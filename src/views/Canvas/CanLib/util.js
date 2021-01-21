@@ -7,7 +7,8 @@ export default class Util {
     * @param
     */
     // 为保证图形能够闭合，起点和终点必须相等。
-    coordinates.push(coordinates[0])
+    const copy = [...coordinates]
+    copy.push(copy[0])
     // 默认启动none zero mode
     noneZeroMode = noneZeroMode || 1
     const x = poi[0]
@@ -17,9 +18,9 @@ export default class Util {
     let leftCount = 0
     // 点在线段的右侧数目
     let rightCount = 0
-    for (let i = 0; i < coordinates.length - 1; i++) {
-      const start = coordinates[i]
-      const end = coordinates[i + 1]
+    for (let i = 0; i < copy.length - 1; i++) {
+      const start = copy[i]
+      const end = copy[i + 1]
       // 起点、终点斜率不存在的情况
       if (start[0] === end[0]) {
         // 因为射线向右水平，此处说明不相交
@@ -54,5 +55,12 @@ export default class Util {
       }
     }
     return noneZeroMode === 1 ? leftCount - rightCount !== 0 : crossNum % 2 === 1
+  }
+
+  static poiInCircle (poi, center, radius) {
+    const dx = center[0] - poi[0]
+    const dy = center[1] - poi[1]
+    const dist = Math.sqrt(dx * dx + dy * dy)
+    return dist <= radius
   }
 }

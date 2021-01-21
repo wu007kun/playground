@@ -1,4 +1,3 @@
-import CtrlCircle from './ctrlCircle'
 import Util from './util'
 export default class Sandbox {
   constructor (elem, { width, height }) {
@@ -6,23 +5,20 @@ export default class Sandbox {
     this.width = width
     this.height = height
     this.children = [] // 主要覆盖物
-    this.attachment = [] // 附属物
     // 覆盖物的自增id
     this.entityId = 0
     // 每个类型的事件保存为一个Map，Map中key/value为覆盖物的id和callback的Set
-    this.eventMap = {
-      click: new Map(),
-      contextmenu: new Map()
-    }
-    // canvas元素响应鼠标左右键点击，并将坐标传给handleEvent
-    elem.addEventListener('click', e => {
-      const poi = [e.offsetX.toFixed(2) - 0, e.offsetY.toFixed(2) - 0]
-      this.handleEvent('click', poi)
-    })
-    elem.addEventListener('contextmenu', e => {
-      e.preventDefault()
-      const poi = [e.offsetX.toFixed(2) - 0, e.offsetY.toFixed(2) - 0]
-      this.handleEvent('contextmenu', poi)
+    const eventNames = [
+      'click', 'contextmenu', 'mousedown', 'mouseup', 'mousemove', 'mouseleave'
+    ]
+    this.eventMap = {}
+    eventNames.forEach(name => {
+      this.eventMap[name] = new Map()
+      elem.addEventListener(name, e => {
+        e.preventDefault()
+        const poi = [e.offsetX.toFixed(2) - 0, e.offsetY.toFixed(2) - 0]
+        this.handleEvent(name, poi)
+      })
     })
     // 每一帧都全部渲染
     this.renderAll()
@@ -33,7 +29,10 @@ export default class Sandbox {
     const activeChildren = Array.from(this.eventMap[type].keys()).map(id => {
       return this.children.find(c => c.id === id) || null
     }).filter(c => {
-      return c && Util.judge(poi, c.points)
+      return c && (
+        (c.judgeBy === 'points' && Util.judge(poi, c.points)) ||
+          (c.judgeBy === 'circle' && Util.poiInCircle(poi, [c.x, c.y], c.radius))
+      )
     })
     const activeChild = activeChildren.reduce((prev, cur) => {
       if (prev) {
@@ -108,30 +107,6 @@ export default class Sandbox {
     copy.forEach(item => {
       item.render()
     })
-    if (this.activeEntity) {
-      const vertexArr = this.activeEntity.points
-      vertexArr.forEach(pos => {
-        const circle = new CtrlCircle({
-          sandbox: this,
-          x: pos[0],
-          y: pos[1],
-          radius: 6,
-          color: '#409eff',
-          vertex: pos
-        })
-        circle.render()
-      })
-    } else {
-      // console.log(this.activeEntity)
-    }
     requestAnimationFrame(this.renderAll.bind(this))
-  }
-
-  setActive (entity) {
-    this.activeEntity = entity
-  }
-
-  clearActive () {
-    this.activeEntity = null
   }
 }
