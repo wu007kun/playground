@@ -11,7 +11,10 @@
         <p class="tip">{{ tip }}</p>
       </div>
       <div class="wrap">
-        <canvas id="canvas-elem" width="500" height="500"></canvas>
+        <canvas id="canvas-elem" width="500" height="500"
+          :style="{
+            cursor: canvasCursor
+          }"></canvas>
       </div>
     </div>
     <div class="data-section">
@@ -34,7 +37,7 @@ let bgImage = null // 背景图片类
 const ctrlItems = [] // 被选中的覆盖物的顶点圆
 const tempItems = [] // 绘制途中产生的临时点线
 const rectVertexArr = [['xmin', 'ymin'], ['xmax', 'ymax']] // 矩形的控制点名称
-
+let tempVertex = []
 export default {
   data () {
     return {
@@ -42,6 +45,7 @@ export default {
         polygon: '多边形',
         rect: '矩形'
       },
+      canvasCursor: 'default',
       size: 500,
       entities: [], // 主要覆盖物
       newPoints: [], // 绘制过程的拾取点
@@ -105,6 +109,7 @@ export default {
     initCanvas () {
       const c = document.getElementById('canvas-elem')
       sandbox = new CanLib.Sandbox(c, { width: this.size, height: this.size })
+      sandbox.on('mousemove', this.setCursorDefault)
       // 滚轮缩放，暂时不做
       // let level = 1
       // c.onmousewheel = e => {
@@ -148,7 +153,6 @@ export default {
       reader.readAsDataURL(file)
       reader.onload = (e) => {
         const imgBase64Data = e.target.result
-        console.log(imgBase64Data)
         const image = document.createElement('img')
         image.onload = () => {
           let w = this.size
@@ -177,10 +181,20 @@ export default {
           [30, 100]
         ]
       })
+      et.on('mousemove', this.setCursorPointer)
       this.entities.push(et)
       et.on('click', e => {
         this.setActiveEntity(et)
       })
+    },
+    setCursorDefault () {
+      this.canvasCursor = 'default'
+    },
+    setCursorPointer () {
+      this.canvasCursor = 'pointer'
+    },
+    setCursorMove () {
+      this.canvasCursor = 'move'
     },
     // 新建多边形部分
     // 开始新建多边形
@@ -204,14 +218,20 @@ export default {
       })
       sandbox.add(vertex)
       tempItems.push(vertex)
-      if (this.newPoints.length === 3) {
+      if (this.newPoints.length === 2) {
+        tempVertex = [...e]
+        sandbox.on('mousemove', this.mousemovePolygon)
         this.newEntity = this.drawPolygon({
           color: 'rgba(100, 155, 255, .7)',
-          points: this.newPoints
+          points: [...this.newPoints, tempVertex]
         })
       } else if (this.newPoints.length > 3 && this.newEntity) {
-        this.newEntity.points = this.newPoints
+        this.newEntity.points = [...this.newPoints, tempVertex]
       }
+    },
+    mousemovePolygon (e) {
+      tempVertex = [...e]
+      this.newEntity.points = [...this.newPoints, tempVertex]
     },
     // 右键回退
     backstep () {
@@ -221,7 +241,7 @@ export default {
         sandbox.remove(vertex)
         if (this.newEntity) {
           if (this.newPoints.length > 2) {
-            this.newEntity.points = this.newPoints
+            this.newEntity.points = [...this.newPoints, tempVertex]
           } else {
             this.newEntity.destruct()
             this.newEntity = null
@@ -241,14 +261,17 @@ export default {
     },
     // 回车键 完成新建
     completePolygon (e) {
+      sandbox.off('mousemove', this.mousemovePolygon)
       sandbox.off('click', this.pickPolygon)
       sandbox.off('contextmenu', this.backstep)
+      this.newEntity.points = [...this.newPoints]
       this.newPoints = []
       tempItems.forEach(v => {
         sandbox.remove(v)
       })
       tempItems.length = 0
       const et = this.newEntity
+      et.on('mousemove', this.setCursorPointer)
       this.entities.push(et)
       et.on('click', e => {
         this.setActiveEntity(et)
@@ -264,55 +287,66 @@ export default {
       if (this.status !== 0) return
       this.status = 2
       this.newPoints = []
-      sandbox.on('click', this.pickRect)
-      sandbox.on('contextmenu', this.backstepRect)
+      sandbox.on('mousedown', this.startRect)
     },
-    // 左键拾取顶点，当拾取到两点时创建矩形
-    pickRect (e) {
-      if (this.newPoints.length === 1) {
-        if (e[0] !== this.newPoints[0][0] && e[1] !== this.newPoints[0][1]) {
-          this.newPoints.push(e)
-          const x1 = this.newPoints[0][0]
-          const y1 = this.newPoints[0][1]
-          const x2 = this.newPoints[1][0]
-          const y2 = this.newPoints[1][1]
-          const xmin = x1 < x2 ? x1 : x2
-          const xmax = x1 < x2 ? x2 : x1
-          const ymin = y1 < y2 ? y1 : y2
-          const ymax = y1 < y2 ? y2 : y1
-          const entity = this.drawRect({
-            color: 'rgba(100, 205, 110, .7)',
-            xmin,
-            xmax,
-            ymin,
-            ymax
-          })
-          entity.on('click', e => {
-            this.setActiveEntity(entity)
-          })
-          this.newPoints = []
-          tempItems.forEach(v => {
-            sandbox.remove(v)
-          })
-          tempItems.length = 0
-          sandbox.off('click', this.pickRect)
-          sandbox.off('contextmenu', this.backstepRect)
-          this.status = 0
-        }
-      } else {
-        this.newPoints.push(e)
-        const vertex = new CanLib.Circle({
-          sandbox,
-          x: e[0],
-          y: e[1],
-          radius: 4,
-          color: '#409eff'
+    startRect (e) {
+      this.newPoints = [e]
+      const vertex = new CanLib.Circle({
+        sandbox,
+        x: e[0],
+        y: e[1],
+        radius: 4,
+        color: '#409eff'
+      })
+      sandbox.add(vertex)
+      tempItems.push(vertex)
+      sandbox.on('mousemove', this.moveRect)
+      sandbox.on('mouseup', this.endRect)
+    },
+    moveRect (e) {
+      this.newPoints[1] = e
+      if (this.newPoints[0][0] === e[0] || this.newPoints[0][1] === e[1]) return
+      const x1 = this.newPoints[0][0]
+      const y1 = this.newPoints[0][1]
+      const x2 = this.newPoints[1][0]
+      const y2 = this.newPoints[1][1]
+      const xmin = x1 < x2 ? x1 : x2
+      const xmax = x1 < x2 ? x2 : x1
+      const ymin = y1 < y2 ? y1 : y2
+      const ymax = y1 < y2 ? y2 : y1
+      if (!this.newEntity) {
+        this.newEntity = this.drawRect({
+          color: 'rgba(100, 205, 110, .7)',
+          xmin,
+          xmax,
+          ymin,
+          ymax
         })
-        sandbox.add(vertex)
-        tempItems.push(vertex)
+      } else {
+        this.newEntity.xmin = xmin
+        this.newEntity.xmax = xmax
+        this.newEntity.ymin = ymin
+        this.newEntity.ymax = ymax
       }
     },
-    // 创建矩形
+    endRect (e) {
+      sandbox.off('mousedown', this.startRect)
+      sandbox.off('mousemove', this.moveRect)
+      sandbox.off('mouseup', this.endRect)
+      const et = this.newEntity
+      this.newEntity = null
+      this.newPoints = []
+      tempItems.forEach(v => {
+        sandbox.remove(v)
+      })
+      tempItems.length = 0
+      this.status = 0
+      setTimeout(() => {
+        et.on('click', e => {
+          this.setActiveEntity(et)
+        })
+      }, 0)
+    },
     drawRect (params) {
       const rect = new CanLib.Rect({
         sandbox,
@@ -323,16 +357,9 @@ export default {
         color: params.color
       })
       sandbox.add(rect)
+      rect.on('mousemove', this.setCursorPointer)
       this.entities.push(rect)
       return rect
-    },
-    // 右键回退一步
-    backstepRect () {
-      if (this.newPoints.length) {
-        this.newPoints.pop()
-        const vertex = tempItems.pop()
-        sandbox.remove(vertex)
-      }
     },
     // 覆盖物编辑部分
     // 点击一个覆盖物，激活编辑状态
@@ -354,6 +381,7 @@ export default {
           })
           circle.vertexIndex = index
           sandbox.add(circle)
+          circle.on('mousemove', this.setCursorMove)
           ctrlItems.push(circle)
           circle.on('mousedown', e => {
             this.activeCircle = circle
@@ -372,6 +400,7 @@ export default {
           })
           circle.vertexIndex = index
           sandbox.add(circle)
+          circle.on('mousemove', this.setCursorMove)
           ctrlItems.push(circle)
           circle.on('mousedown', e => {
             this.activeCircle = circle
@@ -390,15 +419,11 @@ export default {
     },
     // 删除一个覆盖物
     handleDelete () {
-      console.log(this.status)
       if (this.status !== 3) return
-      console.log('删除前', this.entities)
       const i = this.entities.indexOf(this.activeEntity)
-      console.log('索引', i)
       this.entities.splice(i, 1)
       this.activeEntity.destruct()
       this.activeEntity = null
-      console.log('删除后', this.entities)
       this.clearCtrlItems()
       this.status = 0
       this.removeKeyHandler('Delete', this.handleDelete)

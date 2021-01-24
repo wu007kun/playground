@@ -15,7 +15,9 @@ export default class Sandbox {
     eventNames.forEach(name => {
       this.eventMap[name] = new Map()
       elem.addEventListener(name, e => {
-        e.preventDefault()
+        if (name === 'contextmenu') {
+          e.preventDefault()
+        }
         const poi = [e.offsetX.toFixed(2) - 0, e.offsetY.toFixed(2) - 0]
         this.handleEvent(name, poi)
       })
@@ -46,10 +48,14 @@ export default class Sandbox {
       for (const callback of callbackSet.values()) {
         callback(poi)
       }
-    } else if (this.eventMap[type].has('sandbox')) {
+    }
+    if (this.eventMap[type].has('sandbox')) {
       // sandbox本身的事件单独处理
       const callbackSet = this.eventMap[type].get('sandbox')
       for (const callback of callbackSet.values()) {
+        if (type === 'mousemove') {
+          console.log('触发', callback)
+        }
         callback(poi)
       }
     }
