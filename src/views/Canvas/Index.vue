@@ -19,13 +19,20 @@
     </div>
     <div class="data-section">
       <div class="data-item"
-        v-for="(item, index) in pointsData"
+        v-for="(item, index) in entities"
         :key="index"
         :class="{
-          'active': item.active
+          'active': this.activeEntity === item
         }">
-        <p>类型：{{ nameDic[item.name] }}</p>
-        <p>数据：{{ JSON.stringify(item.data) }}</p>
+        <div class="checkbox" :class="{
+          'is-checked': item.visible
+        }"
+        @click="setVisible(item)"></div>
+        <div>
+          <input type="text" v-model="item.custom.name" placeholder="请输入名称">
+          <p>类型：{{ nameDic[item.entityType] }}</p>
+          <p>顶点：{{ JSON.stringify(item.points) }}</p>
+        </div>
       </div>
     </div>
   </div>
@@ -56,13 +63,6 @@ export default {
     }
   },
   computed: {
-    pointsData () {
-      return this.entities.map(et => ({
-        name: et.entityType,
-        active: this.activeEntity === et,
-        data: et.points
-      }))
-    },
     tip () {
       if (this.status === 0) {
         return '状态：空闲'
@@ -169,6 +169,12 @@ export default {
         image.src = imgBase64Data
       }
     },
+    setVisible (et) {
+      et.visible = !et.visible
+      if (!et.visible) {
+        this.exitEditing()
+      }
+    },
     initExistEntities () {
       const et = this.drawPolygon({
         color: 'rgba(100, 155, 255, .7)',
@@ -202,7 +208,9 @@ export default {
       if (this.status !== 0) return
       this.status = 1
       this.newPoints = []
-      sandbox.on('click', this.pickPolygon)
+      sandbox.on('click', this.pickPolygon, {
+        permeate: true
+      })
       sandbox.on('contextmenu', this.backstep)
       this.addKeyHandler('Enter', this.completePolygon)
     },
@@ -220,7 +228,9 @@ export default {
       tempItems.push(vertex)
       if (this.newPoints.length === 2) {
         tempVertex = [...e]
-        sandbox.on('mousemove', this.mousemovePolygon)
+        sandbox.on('mousemove', this.mousemovePolygon, {
+          permeate: true
+        })
         this.newEntity = this.drawPolygon({
           color: 'rgba(100, 155, 255, .7)',
           points: [...this.newPoints, tempVertex]
@@ -240,11 +250,12 @@ export default {
         const vertex = tempItems.pop()
         sandbox.remove(vertex)
         if (this.newEntity) {
-          if (this.newPoints.length > 2) {
+          if (this.newPoints.length >= 2) {
             this.newEntity.points = [...this.newPoints, tempVertex]
           } else {
             this.newEntity.destruct()
             this.newEntity = null
+            sandbox.off('mousemove', this.mousemovePolygon)
           }
         }
       }
@@ -300,8 +311,12 @@ export default {
       })
       sandbox.add(vertex)
       tempItems.push(vertex)
-      sandbox.on('mousemove', this.moveRect)
-      sandbox.on('mouseup', this.endRect)
+      sandbox.on('mousemove', this.moveRect, {
+        permeate: true
+      })
+      sandbox.on('mouseup', this.endRect, {
+        permeate: true
+      })
     },
     moveRect (e) {
       this.newPoints[1] = e
@@ -342,9 +357,11 @@ export default {
       tempItems.length = 0
       this.status = 0
       setTimeout(() => {
-        et.on('click', e => {
-          this.setActiveEntity(et)
-        })
+        if (et) {
+          et.on('click', e => {
+            this.setActiveEntity(et)
+          })
+        }
       }, 0)
     },
     drawRect (params) {
@@ -385,7 +402,9 @@ export default {
           ctrlItems.push(circle)
           circle.on('mousedown', e => {
             this.activeCircle = circle
-            sandbox.on('mousemove', this.moveCircle)
+            sandbox.on('mousemove', this.moveCircle, {
+              permeate: true
+            })
             sandbox.on('mouseup', this.circleMouseup)
           })
         })
@@ -404,7 +423,9 @@ export default {
           ctrlItems.push(circle)
           circle.on('mousedown', e => {
             this.activeCircle = circle
-            sandbox.on('mousemove', this.moveCircleOfRect)
+            sandbox.on('mousemove', this.moveCircleOfRect, {
+              permeate: true
+            })
             sandbox.on('mouseup', this.circleMouseupRect)
           })
         })
@@ -476,7 +497,7 @@ export default {
     display: flex;
     .btn {
       background: #409eff; color: #fff;
-      margin-right: 10px;
+      margin-right: 5px;
       padding: 3px 6px; font-size: 12px;
       border-radius: 3px;
       cursor: pointer; user-select: none;
@@ -503,9 +524,24 @@ export default {
     .data-item {
       margin-bottom: 5px;
       padding: 5px;
-      border: 2px solid transparent;
+      border: 2px solid #fff;
+      display: flex;
       &.active {
         border-color: #409eff;
+      }
+      .checkbox {
+        margin-right: 14px;
+        position: relative;
+        width: 14px; height: 14px;
+        border: 1px solid #e2e2e2;
+        border-radius: 2px;
+        cursor: pointer;
+        &.is-checked::after {
+          content: '';
+          position: absolute; top: 2px; left: 2px;
+          width: 10px; height: 10px;
+          background: green;
+        }
       }
     }
   }

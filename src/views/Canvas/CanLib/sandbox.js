@@ -31,7 +31,7 @@ export default class Sandbox {
     const activeChildren = Array.from(this.eventMap[type].keys()).map(id => {
       return this.children.find(c => c.id === id) || null
     }).filter(c => {
-      return c && (
+      return c && c.visible && (
         (c.judgeBy === 'points' && Util.judge(poi, c.points)) ||
           (c.judgeBy === 'circle' && Util.poiInCircle(poi, [c.x, c.y], c.radius))
       )
@@ -45,18 +45,17 @@ export default class Sandbox {
     }, null)
     if (activeChild) {
       const callbackSet = this.eventMap[type].get(activeChild.id)
-      for (const callback of callbackSet.values()) {
-        callback(poi)
+      for (const item of callbackSet.values()) {
+        item.handler()
       }
     }
     if (this.eventMap[type].has('sandbox')) {
       // sandbox本身的事件单独处理
       const callbackSet = this.eventMap[type].get('sandbox')
-      for (const callback of callbackSet.values()) {
-        if (type === 'mousemove') {
-          console.log('触发', callback)
+      for (const item of callbackSet.values()) {
+        if (!activeChild || item.option.permeate) {
+          item.handler(poi)
         }
-        callback(poi)
       }
     }
   }
@@ -79,14 +78,17 @@ export default class Sandbox {
   }
 
   // 添加事件绑定
-  on (type, callback) {
+  on (type, callback, option = {}) {
     const eventMap = this.eventMap[type]
     if (eventMap) {
       if (!eventMap.has('sandbox')) {
-        eventMap.set('sandbox', new Set())
+        eventMap.set('sandbox', [])
       }
       const callbackSet = eventMap.get('sandbox')
-      callbackSet.add(callback)
+      callbackSet.push({
+        handler: callback,
+        option: option
+      })
     } else {
       console.error('事件类型有误')
     }
@@ -97,8 +99,11 @@ export default class Sandbox {
     const eventMap = this.eventMap[type]
     if (eventMap) {
       const callbackSet = eventMap.get('sandbox')
-      if (callbackSet && callbackSet.has(callback)) {
-        callbackSet.delete(callback)
+      if (callbackSet) {
+        const index = callbackSet.findIndex(i => i.handler === callback)
+        if (index !== -1) {
+          callbackSet.splice(index, 1)
+        }
       }
     } else {
       console.error('事件类型有误')
