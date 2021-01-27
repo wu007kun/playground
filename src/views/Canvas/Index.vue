@@ -1,6 +1,6 @@
 <template>
-  <div class="canvas-page">
-    <div class="canvas-section">
+  <div class="label-page">
+    <section class="ctrl-section">
       <div class="ctrls">
         <div class="btn" @click="emitUpload">
           替换图片
@@ -8,16 +8,26 @@
         </div>
         <div class="btn" @click="addPolygon">画多边形</div>
         <div class="btn" @click="addRect">画矩形</div>
-        <p class="tip">{{ tip }}</p>
       </div>
-      <div class="wrap">
-        <canvas id="canvas-elem" width="500" height="500"
+    </section>
+    <section class="canvas-section">
+      <div class="wrap" :style="{height: wrapHeight + 'px'}">
+        <canvas id="canvas-elem"
           :style="{
+            width: width + 'px',
+            height: height + 'px',
+            transform: `scale(${scale})`,
             cursor: canvasCursor
           }"></canvas>
       </div>
-    </div>
-    <div class="data-section">
+      <div class="tip-wrap">
+        <p class="tip">{{ tip }}</p>
+        <p>原始尺寸 {{ initialWidth }} × {{ initialHeight }}</p>
+        <p class="mouse-xy">当前坐标 {{ curX }}，{{ curY }}</p>
+      </div>
+
+    </section>
+    <section class="data-section">
       <div class="data-item"
         v-for="(item, index) in entities"
         :key="index"
@@ -34,11 +44,12 @@
           <p>顶点：{{ JSON.stringify(item.points) }}</p>
         </div>
       </div>
-    </div>
+    </section>
   </div>
 </template>
 <script>
 import CanLib from './CanLib/index'
+let cElem = null
 let sandbox = null // 画布
 let bgImage = null // 背景图片类
 const ctrlItems = [] // 被选中的覆盖物的顶点圆
@@ -48,12 +59,20 @@ let tempVertex = []
 export default {
   data () {
     return {
+      scale: 1,
+      initialScale: 1,
+      initialWidth: 0,
+      initialHeight: 0,
+      width: 1000,
+      height: 1000,
+      wrapHeight: 1000,
+      curX: 0,
+      curY: 0,
       nameDic: {
         polygon: '多边形',
         rect: '矩形'
       },
       canvasCursor: 'default',
-      size: 500,
       entities: [], // 主要覆盖物
       newPoints: [], // 绘制过程的拾取点
       newEntity: null, // 当前绘制的覆盖物
@@ -107,37 +126,41 @@ export default {
     },
     // 初始化
     initCanvas () {
-      const c = document.getElementById('canvas-elem')
-      sandbox = new CanLib.Sandbox(c, { width: this.size, height: this.size })
+      cElem = document.getElementById('canvas-elem')
+      sandbox = new CanLib.Sandbox(cElem, { width: 1000, height: 1000 })
       sandbox.on('mousemove', this.setCursorDefault)
       // 滚轮缩放，暂时不做
-      // let level = 1
-      // c.onmousewheel = e => {
-      //   e.preventDefault()
-      //   const delta = e.wheelDelta
-      //   if (delta > 0 && level < 3) {
-      //     level += 0.1
-      //   } else if (delta < 0 && level > 1) {
-      //     level -= 0.1
-      //   }
-      //   c.style.transform = `scale(${level})`
-      // }
+      cElem.onmousewheel = e => {
+        e.preventDefault()
+        const delta = e.wheelDelta
+        if (delta > 0 && this.scale < this.initialScale * 5) {
+          this.scale += 0.2
+        } else if (delta < 0 && this.scale > this.initialScale) {
+          this.scale -= 0.2
+        }
+      }
     },
     // 画背景图
     initBgImage (src) {
       return new Promise((resolve, reject) => {
         const image = document.createElement('img')
         image.onload = () => {
-          let w = this.size
-          let h = this.size
-          if (image.width >= image.height) {
-            h = this.size / image.width * image.height
-          } else {
-            w = this.size / image.height * image.width
-          }
-          bgImage = new CanLib.Background({ sandbox, x: 0, y: 0, width: w, height: h, image })
-          sandbox.add(bgImage)
-          resolve()
+          this.width = image.width
+          this.height = image.height
+          this.initialWidth = image.width
+          this.initialHeight = image.height
+          sandbox.width = this.width
+          cElem.width = this.width
+          sandbox.height = this.height
+          cElem.height = this.height
+          this.wrapHeight = 1000 / this.width * this.height
+          this.scale = 1000 / this.width
+          this.initialScale = this.scale
+          this.$nextTick(() => {
+            bgImage = new CanLib.Background({ sandbox, x: 0, y: 0, width: this.width, height: this.height, image })
+            sandbox.add(bgImage)
+            resolve()
+          })
         }
         image.onerror = reject
         image.src = src
@@ -176,24 +199,25 @@ export default {
       }
     },
     initExistEntities () {
-      const et = this.drawPolygon({
-        color: 'rgba(100, 155, 255, .7)',
-        points: [
-          [50, 50],
-          [100, 40],
-          [150, 100],
-          [130, 150],
-          [50, 200],
-          [30, 100]
-        ]
-      })
-      et.on('mousemove', this.setCursorPointer)
-      this.entities.push(et)
-      et.on('click', e => {
-        this.setActiveEntity(et)
+      const data = [
+        [[127, 226], [152, 228], [158, 242], [157, 254], [144, 256], [113, 256], [113, 242]],
+        [[334, 223], [382, 246], [387, 256], [379, 297], [338, 304], [331, 293], [324, 260], [323, 235]]
+      ]
+      data.forEach(arr => {
+        const et = this.drawPolygon({
+          color: 'rgba(100, 155, 255, .7)',
+          points: arr
+        })
+        et.on('mousemove', this.setCursorPointer)
+        this.entities.push(et)
+        et.on('click', e => {
+          this.setActiveEntity(et)
+        })
       })
     },
-    setCursorDefault () {
+    setCursorDefault (e) {
+      this.curX = e[0]
+      this.curY = e[1]
       this.canvasCursor = 'default'
     },
     setCursorPointer () {
@@ -488,33 +512,47 @@ export default {
 }
 </script>
 <style lang="less">
-.canvas-page {
+.label-page {
   font-size: 14px;
-  padding: 30px;
   display: flex; align-items: flex-start;
-  .ctrls {
-    margin-bottom: 10px;
-    display: flex;
-    .btn {
-      background: #409eff; color: #fff;
-      margin-right: 5px;
-      padding: 3px 6px; font-size: 12px;
-      border-radius: 3px;
-      cursor: pointer; user-select: none;
-    }
-    .tip {
-      color: #3333ff;
-      font-weight: bold;
+  .ctrl-section {
+    width: 200px;
+    .ctrls {
+      text-align: center;
+      .btn {
+        margin: 20px auto;
+        width: 100px; height: 30px; line-height: 30px;
+        background: #409eff; color: #fff;
+        font-size: 12px;
+        border-radius: 3px;
+        cursor: pointer; user-select: none;
+      }
     }
   }
-  .wrap {
-    display: block;
-    width: 500px; height: 500px;
-    overflow: hidden;
-    #canvas-elem {
-      margin: 0 auto;
+  .canvas-section {
+    width: 1002px;
+    .tip-wrap {
+      display: flex; justify-content: flex-end;
+      height: 40px; line-height: 40px;
+      .tip {
+        margin-right: auto;
+        color: #3333ff;
+        font-weight: bold;
+      }
+      .mouse-xy {
+        width: 200px;
+      }
+    }
+    .wrap {
       display: block;
-      width: 500px; height: 500px;
+      width: 1000px;
+      overflow: hidden;
+      border: 1px solid #333;
+      display: flex; justify-content: center; align-items: center;
+      #canvas-elem {
+        display: block;
+        transform-origin: center center;
+      }
     }
   }
   .data-section {
