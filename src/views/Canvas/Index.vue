@@ -129,9 +129,15 @@ export default {
       cElem = document.getElementById('canvas-elem')
       sandbox = new CanLib.Sandbox(cElem, { width: 1000, height: 1000 })
       sandbox.on('mousemove', this.setCursorDefault)
-      // 滚轮缩放，暂时不做
+      // 滚轮缩放
       cElem.onmousewheel = e => {
-        e.preventDefault()
+        // e.preventDefault()
+        // const xRate = `${(e.offsetX / this.initialWidth * 100).toFixed(3)}%`
+        // const yRate = `${(e.offsetY / this.initialHeight * 100).toFixed(3)}%`
+        // console.log(xRate)
+        // console.log(yRate)
+        // cElem.style['transform-origin'] = `${xRate} ${yRate}`
+        cElem.style['transform-origin'] = '100% 100%'
         const delta = e.wheelDelta
         if (delta > 0 && this.scale < this.initialScale * 5) {
           this.scale += 0.2
@@ -154,8 +160,11 @@ export default {
           sandbox.height = this.height
           cElem.height = this.height
           this.wrapHeight = 1000 / this.width * this.height
+
           this.scale = 1000 / this.width
           this.initialScale = this.scale
+          cElem.style['transform-origin'] = '0% 0%'
+          console.log(this.scale)
           this.$nextTick(() => {
             bgImage = new CanLib.Background({ sandbox, x: 0, y: 0, width: this.width, height: this.height, image })
             sandbox.add(bgImage)
@@ -544,14 +553,15 @@ export default {
       }
     }
     .wrap {
+      position: relative;
       display: block;
       width: 1000px;
       overflow: hidden;
       border: 1px solid #333;
-      display: flex; justify-content: center; align-items: center;
       #canvas-elem {
+        position: absolute;
+        left: 0; top: 0;
         display: block;
-        transform-origin: center center;
       }
     }
   }
