@@ -13,11 +13,13 @@
   setImage时提示
   并清空数据
   位置reset
+7. 鼠标移动时十字线
 ——————————————————————————————
-  
-  
+  图片用CSS background，不用canvas
+  重新设计事件覆盖机制（option的permeate）
+  实现按键鼠标操作（按住ctrl拖动）
   导出数据
-  鼠标移动时十字线
+  
   再封装一层，或者把一些方法提到.vue文件外
   polygon和rect修改为继承自同一个class overlay
   读取本地文件夹？

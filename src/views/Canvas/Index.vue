@@ -112,7 +112,7 @@ export default {
       this.handleKey(e.key)
     })
     this.initCanvas()
-    const img = require('./bg.jpg')
+    const img = require('./bg1.jpg')
     this.initBgImage(img)
     this.initExistEntities()
   },
@@ -144,6 +144,7 @@ export default {
         sandbox,
         x: 0,
         y: 0,
+        width: 1 / this.scale,
         color: '#fff'
       })
       sandbox.addAttachment(axisHelper)
@@ -171,6 +172,7 @@ export default {
         [...tempItems, ...ctrlItems].forEach(c => {
           c.radius = 6 / this.scale
         })
+        axisHelper.width = 1 / this.scale
       })
     },
     // 拖动画布
@@ -210,6 +212,7 @@ export default {
           cElem.height = this.height
           this.wrapHeight = 1000 / this.width * this.height
           this.scale = 1000 / this.width
+          axisHelper.width = 1 / this.scale
           this.initialScale = this.scale
           this.$nextTick(() => {
             bgImage = new CanLib.Background({ sandbox, x: 0, y: 0, width: this.width, height: this.height, image })
@@ -259,6 +262,7 @@ export default {
           cElem.height = this.height
           this.wrapHeight = 1000 / this.width * this.height
           this.scale = 1000 / this.width
+          axisHelper.width = 1 / this.scale
           this.initialScale = this.scale
           this.$nextTick(() => {
             bgImage.width = this.width
@@ -289,14 +293,24 @@ export default {
     },
     initExistEntities () {
       const data = [
-        [[127, 226], [152, 228], [158, 242], [157, 254], [144, 256], [113, 256], [113, 242]],
-        [[334, 223], [382, 246], [387, 256], [379, 297], [338, 304], [331, 293], [324, 260], [323, 235]]
+        {
+          name: '行人1',
+          data: [[1104, 1434], [1157, 1405], [1253, 1413], [1339, 1455], [1380, 1498], [1324, 1507], [1280, 1496], [1261, 1524], [1278, 1539], [1296, 1608], [1276, 1617], [1282, 1669], [1281, 1695], [1248, 1834], [1248, 1882], [1281, 1929], [1238, 1979], [1180, 1985], [1212, 1921], [1208, 1885], [1158, 1827], [1152, 1787], [1095, 1774], [1125, 1671], [1140, 1671], [1157, 1626], [1182, 1537], [1206, 1522], [1196, 1502], [1199, 1475], [1183, 1471]]
+        },
+        {
+          name: '行人2',
+          data: [[1846, 1487], [1855, 1455], [1886, 1440], [1914, 1451], [1921, 1486], [1917, 1543], [1938, 1574], [1974, 1716], [1990, 1749], [1975, 1767], [1942, 1784], [1953, 1883], [1964, 1976], [1887, 1984], [1792, 1981], [1792, 1959], [1833, 1938], [1831, 1867], [1809, 1865], [1809, 1811], [1833, 1744], [1805, 1733], [1803, 1708], [1841, 1639], [1840, 1599], [1866, 1549], [1856, 1541], [1847, 1515]]
+        }
+
       ]
-      data.forEach(arr => {
+      data.forEach(obj => {
         const et = this.drawPolygon({
           color: 'rgba(100, 155, 255, .7)',
-          points: arr
+          points: obj.data
         })
+        et.custom = {
+          name: obj.name
+        }
         et.on('mousemove', this.setCursorPointer)
         this.entities.push(et)
         et.on('click', e => {

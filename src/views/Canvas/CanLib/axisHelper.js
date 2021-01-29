@@ -1,9 +1,10 @@
 export default class AxisHelper {
-  constructor ({ sandbox, x, y, color }) {
+  constructor ({ sandbox, x, y, color, width }) {
     this.sandbox = sandbox
     this.ctx = sandbox.ctx
     this.x = x
     this.y = y
+    this.width = width
     this.zIndex = 100
     this.color = color || '#ffffff'
     this.visible = true
@@ -11,6 +12,7 @@ export default class AxisHelper {
 
   render () {
     this.ctx.save()
+    this.ctx.lineWidth = this.width
     this.ctx.strokeStyle = this.color
     this.ctx.beginPath()
     this.ctx.moveTo(this.x, 0)
