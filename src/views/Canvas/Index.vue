@@ -11,19 +11,20 @@
       </div>
     </section>
     <section class="canvas-section">
-      <div class="wrap" :style="{height: wrapHeight + 'px'}">
+      <div class="wrap" ref="wrap" :style="{height: wrapHeight + 'px'}">
         <canvas id="canvas-elem"
           :style="{
             width: width + 'px',
             height: height + 'px',
-            transform: `scale(${scale})`,
+            transform: `scale(${scale}) translate(${transX}px, ${transY}px)`,
             cursor: canvasCursor
           }"></canvas>
       </div>
       <div class="tip-wrap">
         <p class="tip">{{ tip }}</p>
+        <p>当前坐标 {{ curX }}，{{ curY }}</p>
+        <p>当前缩放 {{ parseInt(scale * 100) }}%</p>
         <p>原始尺寸 {{ initialWidth }} × {{ initialHeight }}</p>
-        <p class="mouse-xy">当前坐标 {{ curX }}，{{ curY }}</p>
       </div>
 
     </section>
@@ -49,6 +50,7 @@
 </template>
 <script>
 import CanLib from './CanLib/index'
+let wrapElem = null
 let cElem = null
 let sandbox = null // 画布
 let bgImage = null // 背景图片类
@@ -59,6 +61,12 @@ let tempVertex = []
 export default {
   data () {
     return {
+      transX: 0,
+      transY: 0,
+      beginMouseX: 0,
+      beginMouseY: 0,
+      beginTransX: 0,
+      beginTransY: 0,
       scale: 1,
       initialScale: 1,
       initialWidth: 0,
@@ -126,25 +134,48 @@ export default {
     },
     // 初始化
     initCanvas () {
+      wrapElem = this.$refs.wrap
       cElem = document.getElementById('canvas-elem')
       sandbox = new CanLib.Sandbox(cElem, { width: 1000, height: 1000 })
       sandbox.on('mousemove', this.setCursorDefault)
+      wrapElem.addEventListener('mousedown', this.dragOrNot)
       // 滚轮缩放
-      cElem.onmousewheel = e => {
+      cElem.addEventListener('mousewheel', e => {
         // e.preventDefault()
         // const xRate = `${(e.offsetX / this.initialWidth * 100).toFixed(3)}%`
         // const yRate = `${(e.offsetY / this.initialHeight * 100).toFixed(3)}%`
         // console.log(xRate)
         // console.log(yRate)
         // cElem.style['transform-origin'] = `${xRate} ${yRate}`
-        cElem.style['transform-origin'] = '100% 100%'
+        // cElem.style['transform-origin'] = '100% 100%'
         const delta = e.wheelDelta
         if (delta > 0 && this.scale < this.initialScale * 5) {
           this.scale += 0.2
         } else if (delta < 0 && this.scale > this.initialScale) {
           this.scale -= 0.2
         }
-      }
+      })
+    },
+    dragOrNot (e) {
+      if (this.status !== 0) return
+      this.beginMouseX = e.clientX
+      this.beginMouseY = e.clientY
+      this.beginTransX = this.transX
+      this.beginTransY = this.transY
+      wrapElem.addEventListener('mousemove', this.moveCanvas)
+      wrapElem.addEventListener('mouseup', this.stopMoveCanvas)
+      wrapElem.addEventListener('mouseleave', this.stopMoveCanvas)
+    },
+    moveCanvas (e) {
+      const diffX = (e.clientX - this.beginMouseX) / this.scale
+      const diffY = (e.clientY - this.beginMouseY) / this.scale
+      this.transX = this.beginTransX + diffX
+      this.transY = this.beginTransY + diffY
+    },
+    stopMoveCanvas () {
+      wrapElem.removeEventListener('mousemove', this.moveCanvas)
+      wrapElem.removeEventListener('mouseup', this.stopMoveCanvas)
+      wrapElem.removeEventListener('mouseleave', this.stopMoveCanvas)
     },
     // 画背景图
     initBgImage (src) {
@@ -163,8 +194,6 @@ export default {
 
           this.scale = 1000 / this.width
           this.initialScale = this.scale
-          cElem.style['transform-origin'] = '0% 0%'
-          console.log(this.scale)
           this.$nextTick(() => {
             bgImage = new CanLib.Background({ sandbox, x: 0, y: 0, width: this.width, height: this.height, image })
             sandbox.add(bgImage)
@@ -254,7 +283,7 @@ export default {
         sandbox,
         x: e[0],
         y: e[1],
-        radius: 4,
+        radius: 4 / this.initialScale,
         color: '#409eff'
       })
       sandbox.add(vertex)
@@ -339,7 +368,7 @@ export default {
         sandbox,
         x: e[0],
         y: e[1],
-        radius: 4,
+        radius: 4 / this.initialScale,
         color: '#409eff'
       })
       sandbox.add(vertex)
@@ -426,7 +455,7 @@ export default {
             sandbox,
             x: pos[0],
             y: pos[1],
-            radius: 6,
+            radius: 6 / this.initialScale,
             color: '#409eff'
           })
           circle.vertexIndex = index
@@ -447,7 +476,7 @@ export default {
             sandbox,
             x: et[nameArr[0]],
             y: et[nameArr[1]],
-            radius: 6,
+            radius: 6 / this.initialScale,
             color: '#409eff'
           })
           circle.vertexIndex = index
@@ -543,24 +572,24 @@ export default {
     .tip-wrap {
       display: flex; justify-content: flex-end;
       height: 40px; line-height: 40px;
+      p {
+        margin-left: 40px;
+      }
       .tip {
+        margin-left: 0;
         margin-right: auto;
         color: #3333ff;
         font-weight: bold;
-      }
-      .mouse-xy {
-        width: 200px;
+        text-align: left;
       }
     }
     .wrap {
-      position: relative;
       display: block;
       width: 1000px;
       overflow: hidden;
       border: 1px solid #333;
+      display: flex; justify-content: center; align-items: center;
       #canvas-elem {
-        position: absolute;
-        left: 0; top: 0;
         display: block;
       }
     }
