@@ -7,6 +7,7 @@ export default class Sandbox {
     this.children = [] // 主要覆盖物
     // 覆盖物的自增id
     this.entityId = 0
+    this.attachment = [] // 附加物
     // 每个类型的事件保存为一个Map，Map中key/value为覆盖物的id和callback的Set
     const eventNames = [
       'click', 'contextmenu', 'mousedown', 'mouseup', 'mousemove', 'mouseleave'
@@ -77,6 +78,15 @@ export default class Sandbox {
     if (index !== -1) this.children.splice(index, 1)
   }
 
+  addAttachment (item) {
+    this.attachment.push(item)
+  }
+
+  removeAttachment (item) {
+    const index = this.attachment.indexOf(item)
+    if (index !== -1) this.attachment.splice(index, 1)
+  }
+
   // 添加事件绑定
   on (type, callback, option = {}) {
     const eventMap = this.eventMap[type]
@@ -113,7 +123,7 @@ export default class Sandbox {
   // 全部渲染，这里copy一下是为了不影响children的前后顺序
   renderAll () {
     this.ctx.clearRect(0, 0, this.width, this.height)
-    const copy = [...this.children.filter(c => c.visible)]
+    const copy = [...this.children.filter(c => c.visible), ...this.attachment.filter(c => c.visible)]
     copy.sort((a, b) => a.zIndex - b.zIndex)
     copy.forEach(item => {
       item.render()

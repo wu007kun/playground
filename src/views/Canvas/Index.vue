@@ -8,6 +8,7 @@
         </div>
         <div class="btn" @click="addPolygon">画多边形</div>
         <div class="btn" @click="addRect">画矩形</div>
+        <div class="btn" @click="resetPosition">初始位置</div>
       </div>
     </section>
     <section class="canvas-section">
@@ -49,10 +50,12 @@
   </div>
 </template>
 <script>
+import { Modal, message } from 'ant-design-vue'
 import CanLib from './CanLib/index'
 let wrapElem = null
 let cElem = null
 let sandbox = null // 画布
+let axisHelper = null
 let bgImage = null // 背景图片类
 const ctrlItems = [] // 被选中的覆盖物的顶点圆
 const tempItems = [] // 绘制途中产生的临时点线
@@ -137,25 +140,40 @@ export default {
       wrapElem = this.$refs.wrap
       cElem = document.getElementById('canvas-elem')
       sandbox = new CanLib.Sandbox(cElem, { width: 1000, height: 1000 })
+      axisHelper = new CanLib.AxisHelper({
+        sandbox,
+        x: 0,
+        y: 0,
+        color: '#fff'
+      })
+      sandbox.addAttachment(axisHelper)
       sandbox.on('mousemove', this.setCursorDefault)
       wrapElem.addEventListener('mousedown', this.dragOrNot)
       // 滚轮缩放
-      cElem.addEventListener('mousewheel', e => {
-        // e.preventDefault()
-        // const xRate = `${(e.offsetX / this.initialWidth * 100).toFixed(3)}%`
-        // const yRate = `${(e.offsetY / this.initialHeight * 100).toFixed(3)}%`
-        // console.log(xRate)
-        // console.log(yRate)
-        // cElem.style['transform-origin'] = `${xRate} ${yRate}`
-        // cElem.style['transform-origin'] = '100% 100%'
+      wrapElem.addEventListener('mousewheel', e => {
+        e.preventDefault()
         const delta = e.wheelDelta
-        if (delta > 0 && this.scale < this.initialScale * 5) {
-          this.scale += 0.2
+        if (delta > 0) {
+          const scale = this.scale + 0.25
+          if (scale < this.initialScale * 10) {
+            this.scale = scale
+          } else {
+            this.scale = this.initialScale * 10
+          }
         } else if (delta < 0 && this.scale > this.initialScale) {
-          this.scale -= 0.2
+          const scale = this.scale - 0.25
+          if (scale > this.initialScale) {
+            this.scale = scale
+          } else {
+            this.scale = this.initialScale
+          }
         }
+        [...tempItems, ...ctrlItems].forEach(c => {
+          c.radius = 6 / this.scale
+        })
       })
     },
+    // 拖动画布
     dragOrNot (e) {
       if (this.status !== 0) return
       this.beginMouseX = e.clientX
@@ -191,7 +209,6 @@ export default {
           sandbox.height = this.height
           cElem.height = this.height
           this.wrapHeight = 1000 / this.width * this.height
-
           this.scale = 1000 / this.width
           this.initialScale = this.scale
           this.$nextTick(() => {
@@ -206,29 +223,63 @@ export default {
     },
     emitUpload () {
       if (this.status !== 0) return
-      this.$refs.upload.click()
+      Modal.confirm({
+        title: '替换图片',
+        content: '标注数据将被清空，确定已保存数据',
+        okText: '确定',
+        cancelText: '取消',
+        onOk: () => {
+          // Modal.destroyAll()
+          this.$refs.upload.dispatchEvent(new MouseEvent('click'))
+        },
+        onCancel () {
+          console.log('Cancel')
+        }
+      })
     },
     setImage () {
+      this.resetData()
+      this.transX = 0
+      this.transY = 0
       const file = this.$refs.upload.files[0]
       const reader = new FileReader()
       reader.readAsDataURL(file)
+      const loading = message.loading('加载中..', 0)
       reader.onload = (e) => {
         const imgBase64Data = e.target.result
         const image = document.createElement('img')
         image.onload = () => {
-          let w = this.size
-          let h = this.size
-          if (image.width >= image.height) {
-            h = this.size / image.width * image.height
-          } else {
-            w = this.size / image.height * image.width
-          }
-          bgImage.width = w
-          bgImage.height = h
-          bgImage.image = image
+          this.width = image.width
+          this.height = image.height
+          this.initialWidth = image.width
+          this.initialHeight = image.height
+          sandbox.width = this.width
+          sandbox.height = this.height
+          cElem.width = this.width
+          cElem.height = this.height
+          this.wrapHeight = 1000 / this.width * this.height
+          this.scale = 1000 / this.width
+          this.initialScale = this.scale
+          this.$nextTick(() => {
+            bgImage.width = this.width
+            bgImage.height = this.height
+            bgImage.image = image
+            loading()
+          })
         }
         image.src = imgBase64Data
       }
+    },
+    resetData () {
+      this.entities.forEach(et => {
+        et.destruct()
+      })
+      this.entities = []
+    },
+    resetPosition () {
+      this.transX = 0
+      this.transY = 0
+      this.scale = this.initialScale
     },
     setVisible (et) {
       et.visible = !et.visible
@@ -256,6 +307,8 @@ export default {
     setCursorDefault (e) {
       this.curX = e[0]
       this.curY = e[1]
+      axisHelper.x = e[0]
+      axisHelper.y = e[1]
       this.canvasCursor = 'default'
     },
     setCursorPointer () {
@@ -283,7 +336,7 @@ export default {
         sandbox,
         x: e[0],
         y: e[1],
-        radius: 4 / this.initialScale,
+        radius: 6 / this.scale,
         color: '#409eff'
       })
       sandbox.add(vertex)
@@ -368,7 +421,7 @@ export default {
         sandbox,
         x: e[0],
         y: e[1],
-        radius: 4 / this.initialScale,
+        radius: 6 / this.scale,
         color: '#409eff'
       })
       sandbox.add(vertex)
@@ -455,7 +508,7 @@ export default {
             sandbox,
             x: pos[0],
             y: pos[1],
-            radius: 6 / this.initialScale,
+            radius: 6 / this.scale,
             color: '#409eff'
           })
           circle.vertexIndex = index
@@ -476,7 +529,7 @@ export default {
             sandbox,
             x: et[nameArr[0]],
             y: et[nameArr[1]],
-            radius: 6 / this.initialScale,
+            radius: 6 / this.scale,
             color: '#409eff'
           })
           circle.vertexIndex = index
@@ -554,12 +607,12 @@ export default {
   font-size: 14px;
   display: flex; align-items: flex-start;
   .ctrl-section {
-    width: 200px;
+    width: 120px;
     .ctrls {
       text-align: center;
       .btn {
         margin: 20px auto;
-        width: 100px; height: 30px; line-height: 30px;
+        width: 80px; height: 30px; line-height: 30px;
         background: #409eff; color: #fff;
         font-size: 12px;
         border-radius: 3px;
@@ -595,6 +648,7 @@ export default {
     }
   }
   .data-section {
+    width: calc(100% - 1142px);
     margin-left: 20px;
     padding-top: 30px;
     text-align: left;

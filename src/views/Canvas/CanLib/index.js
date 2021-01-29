@@ -4,6 +4,7 @@ import Rect from './rect'
 import Circle from './circle'
 import Util from './util'
 import Background from './background'
+import AxisHelper from './axisHelper'
 
 export default {
   Sandbox,
@@ -11,5 +12,6 @@ export default {
   Rect,
   Circle,
   Polygon,
+  AxisHelper,
   Util
 }
