@@ -15,8 +15,8 @@
   位置reset
 7. 鼠标移动时十字线
 ——————————————————————————————
-  图片用CSS background，不用canvas
-  重新设计事件覆盖机制（option的permeate）
+  图片用img标签，不用canvas
+  重新设计事件覆盖机制（option的permeate）实现编辑时可拖拽
   实现按键鼠标操作（按住ctrl拖动）
   导出数据
   
