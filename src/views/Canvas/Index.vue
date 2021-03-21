@@ -13,8 +13,9 @@
     </section>
     <section class="canvas-section">
       <div class="wrap" ref="wrap" :style="{height: wrapHeight + 'px'}">
-        <canvas id="canvas-elem"
+        <canvas ref="canvas"
           :style="{
+            'background-image': `url(${bgImg})`,
             width: width + 'px',
             height: height + 'px',
             transform: `scale(${scale}) translate(${transX}px, ${transY}px)`,
@@ -64,6 +65,7 @@ let tempVertex = []
 export default {
   data () {
     return {
+      bgImg: '',
       transX: 0,
       transY: 0,
       beginMouseX: 0,
@@ -117,6 +119,7 @@ export default {
     this.initExistEntities()
   },
   methods: {
+    // 键盘事件
     handleKey (key) {
       if (this.keyHandler[key]) {
         for (const callback of this.keyHandler[key].values()) {
@@ -138,7 +141,7 @@ export default {
     // 初始化
     initCanvas () {
       wrapElem = this.$refs.wrap
-      cElem = document.getElementById('canvas-elem')
+      cElem = this.$refs.canvas
       sandbox = new CanLib.Sandbox(cElem, { width: 1000, height: 1000 })
       axisHelper = new CanLib.AxisHelper({
         sandbox,
@@ -148,36 +151,40 @@ export default {
         color: '#fff'
       })
       sandbox.addAttachment(axisHelper)
-      sandbox.on('mousemove', this.setCursorDefault)
-      wrapElem.addEventListener('mousedown', this.dragOrNot)
-      // 滚轮缩放
-      wrapElem.addEventListener('mousewheel', e => {
-        e.preventDefault()
-        const delta = e.wheelDelta
-        if (delta > 0) {
-          const scale = this.scale + 0.25
-          if (scale < this.initialScale * 10) {
-            this.scale = scale
-          } else {
-            this.scale = this.initialScale * 10
-          }
-        } else if (delta < 0 && this.scale > this.initialScale) {
-          const scale = this.scale - 0.25
-          if (scale > this.initialScale) {
-            this.scale = scale
-          } else {
-            this.scale = this.initialScale
-          }
-        }
-        [...tempItems, ...ctrlItems].forEach(c => {
-          c.radius = 6 / this.scale
-        })
-        axisHelper.width = 1 / this.scale
+      sandbox.on('mousemove', this.setCoord, {
+        permeate: true
       })
+      sandbox.on('mousemove', this.setCursorDefault)
+      wrapElem.addEventListener('mousedown', this.judgeDrag)
+      // 滚轮缩放，在canvas之外也应触发，因此绑定在父级DOM元素上
+      wrapElem.addEventListener('mousewheel', this.handleMouseWheel)
+    },
+    handleMouseWheel (e) {
+      e.preventDefault()
+      const delta = e.wheelDelta
+      if (delta > 0) {
+        const scale = this.scale + 0.25
+        if (scale < this.initialScale * 10) {
+          this.scale = scale
+        } else {
+          this.scale = this.initialScale * 10
+        }
+      } else if (delta < 0 && this.scale > this.initialScale) {
+        const scale = this.scale - 0.25
+        if (scale > this.initialScale) {
+          this.scale = scale
+        } else {
+          this.scale = this.initialScale
+        }
+      }
+      [...tempItems, ...ctrlItems].forEach(c => {
+        c.radius = 6 / this.scale
+      })
+      axisHelper.width = 1 / this.scale
     },
     // 拖动画布
-    dragOrNot (e) {
-      if (this.status !== 0) return
+    judgeDrag (e) {
+      if ((this.status !== 0 && this.status !== 3) || this.activeCircle) return
       this.beginMouseX = e.clientX
       this.beginMouseY = e.clientY
       this.beginTransX = this.transX
@@ -187,6 +194,7 @@ export default {
       wrapElem.addEventListener('mouseleave', this.stopMoveCanvas)
     },
     moveCanvas (e) {
+      if (this.activeCircle) return
       const diffX = (e.clientX - this.beginMouseX) / this.scale
       const diffY = (e.clientY - this.beginMouseY) / this.scale
       this.transX = this.beginTransX + diffX
@@ -214,6 +222,8 @@ export default {
           this.scale = 1000 / this.width
           axisHelper.width = 1 / this.scale
           this.initialScale = this.scale
+          // this.bgImg = src
+          // resolve()
           this.$nextTick(() => {
             bgImage = new CanLib.Background({ sandbox, x: 0, y: 0, width: this.width, height: this.height, image })
             sandbox.add(bgImage)
@@ -318,11 +328,13 @@ export default {
         })
       })
     },
-    setCursorDefault (e) {
+    setCoord (e) {
       this.curX = e[0]
       this.curY = e[1]
       axisHelper.x = e[0]
       axisHelper.y = e[1]
+    },
+    setCursorDefault (e) {
       this.canvasCursor = 'default'
     },
     setCursorPointer () {
@@ -656,8 +668,9 @@ export default {
       overflow: hidden;
       border: 1px solid #333;
       display: flex; justify-content: center; align-items: center;
-      #canvas-elem {
+      canvas {
         display: block;
+        background-size: 100% 100%;
       }
     }
   }

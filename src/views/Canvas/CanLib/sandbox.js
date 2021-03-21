@@ -2,6 +2,7 @@ import Util from './util'
 export default class Sandbox {
   constructor (elem, { width, height }) {
     this.ctx = elem.getContext('2d')
+    this.ctx.fillStyle = 'rgba(255, 255, 255, 0)'
     this.width = width
     this.height = height
     this.children = [] // 主要覆盖物
