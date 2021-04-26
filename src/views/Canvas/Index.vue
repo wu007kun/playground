@@ -52,7 +52,7 @@
 </template>
 <script>
 import { Modal, message } from 'ant-design-vue'
-import CanLib from './CanLib/index'
+import CanLib from '@/canlib/index'
 let wrapElem = null
 let cElem = null
 let sandbox = null // 画布
@@ -110,18 +110,18 @@ export default {
     }
   },
   mounted () {
-    document.addEventListener('keyup', e => {
-      this.handleKey(e.key)
-    })
+    document.addEventListener('keyup', this.handleKey)
     this.initCanvas()
-    const img = require('./bg1.jpg')
+    const img = require('./bg.jpg')
     this.initBgImage(img)
-    this.initExistEntities()
+    this.initEntities()
   },
   methods: {
     // 键盘事件
-    handleKey (key) {
+    handleKey (e) {
+      const key = e.key
       if (this.keyHandler[key]) {
+        console.log(this.keyHandler[key])
         for (const callback of this.keyHandler[key].values()) {
           callback()
         }
@@ -158,6 +158,11 @@ export default {
       wrapElem.addEventListener('mousedown', this.judgeDrag)
       // 滚轮缩放，在canvas之外也应触发，因此绑定在父级DOM元素上
       wrapElem.addEventListener('mousewheel', this.handleMouseWheel)
+      this.addKeyHandler('d', this.destroyCanvas)
+    },
+    destroyCanvas () {
+      sandbox.destroy()
+      document.removeEventListener('keyup', this.handleKey)
     },
     handleMouseWheel (e) {
       e.preventDefault()
@@ -301,7 +306,7 @@ export default {
         this.exitEditing()
       }
     },
-    initExistEntities () {
+    initEntities () {
       const data = [
         {
           name: '行人1',
