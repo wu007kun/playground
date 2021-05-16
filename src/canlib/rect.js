@@ -1,5 +1,8 @@
-export default class Rect {
+import Overlay from './overlay'
+
+export default class Rect extends Overlay {
   constructor ({ sandbox, xmin, ymin, xmax, ymax, color, zIndex }) {
+    super()
     this.sandbox = sandbox
     this.ctx = sandbox.ctx
     this.entityType = 'rect'
@@ -25,41 +28,6 @@ export default class Rect {
       this.points[2][0] - this.points[0][0],
       this.points[2][1] - this.points[0][1])
     this.ctx.restore()
-  }
-
-  destruct () {
-    this.sandbox.remove(this)
-  }
-
-  on (type, callback, option = {}) {
-    const eventMap = this.sandbox.eventMap[type]
-    if (eventMap) {
-      if (!eventMap.has(this.id)) {
-        eventMap.set(this.id, [])
-      }
-      const callbackSet = eventMap.get(this.id)
-      callbackSet.push({
-        handler: callback,
-        option: option
-      })
-    } else {
-      console.error('事件类型有误')
-    }
-  }
-
-  off (type, callback) {
-    const eventMap = this.sandbox.eventMap[type]
-    if (eventMap) {
-      const callbackSet = eventMap.get(this.id)
-      if (callbackSet) {
-        const index = callbackSet.findIndex(i => i.handler === callback)
-        if (index !== -1) {
-          callbackSet.splice(index, 1)
-        }
-      }
-    } else {
-      console.error('事件类型有误')
-    }
   }
 
   set xmin (val) {

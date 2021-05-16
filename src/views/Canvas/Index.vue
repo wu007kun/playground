@@ -15,9 +15,6 @@
       <div class="wrap" ref="wrap" :style="{height: wrapHeight + 'px'}">
         <canvas ref="canvas"
           :style="{
-            'background-image': `url(${bgImg})`,
-            width: width + 'px',
-            height: height + 'px',
             transform: `scale(${scale}) translate(${transX}px, ${transY}px)`,
             cursor: canvasCursor
           }"></canvas>
@@ -28,7 +25,6 @@
         <p>当前缩放 {{ parseInt(scale * 100) }}%</p>
         <p>原始尺寸 {{ initialWidth }} × {{ initialHeight }}</p>
       </div>
-
     </section>
     <section class="data-section">
       <div class="data-item"
@@ -42,7 +38,6 @@
         }"
         @click="setVisible(item)"></div>
         <div>
-          <input type="text" v-model="item.custom.name" placeholder="请输入名称">
           <p>类型：{{ nameDic[item.entityType] }}</p>
           <p>顶点：{{ JSON.stringify(item.points) }}</p>
         </div>
@@ -51,17 +46,28 @@
   </div>
 </template>
 <script>
-import { Modal, message } from 'ant-design-vue'
+import { Modal } from 'ant-design-vue'
 import CanLib from '@/canlib/index'
+const initialData = [
+  {
+    name: '行人1',
+    data: [[1104, 1434], [1157, 1405], [1253, 1413], [1339, 1455], [1380, 1498], [1324, 1507], [1280, 1496], [1261, 1524], [1278, 1539], [1296, 1608], [1276, 1617], [1282, 1669], [1281, 1695], [1248, 1834], [1248, 1882], [1281, 1929], [1238, 1979], [1180, 1985], [1212, 1921], [1208, 1885], [1158, 1827], [1152, 1787], [1095, 1774], [1125, 1671], [1140, 1671], [1157, 1626], [1182, 1537], [1206, 1522], [1196, 1502], [1199, 1475], [1183, 1471]]
+  },
+  {
+    name: '行人2',
+    data: [[1846, 1487], [1855, 1455], [1886, 1440], [1914, 1451], [1921, 1486], [1917, 1543], [1938, 1574], [1974, 1716], [1990, 1749], [1975, 1767], [1942, 1784], [1953, 1883], [1964, 1976], [1887, 1984], [1792, 1981], [1792, 1959], [1833, 1938], [1831, 1867], [1809, 1865], [1809, 1811], [1833, 1744], [1805, 1733], [1803, 1708], [1841, 1639], [1840, 1599], [1866, 1549], [1856, 1541], [1847, 1515]]
+  }
+
+]
 let wrapElem = null
 let cElem = null
 let sandbox = null // 画布
-let axisHelper = null
 let bgImage = null // 背景图片类
 const ctrlItems = [] // 被选中的覆盖物的顶点圆
 const tempItems = [] // 绘制途中产生的临时点线
 const rectVertexArr = [['xmin', 'ymin'], ['xmax', 'ymax']] // 矩形的控制点名称
 let tempVertex = []
+const keyHandler = {}
 export default {
   data () {
     return {
@@ -90,8 +96,7 @@ export default {
       newPoints: [], // 绘制过程的拾取点
       newEntity: null, // 当前绘制的覆盖物
       activeEntity: null, // 当前激活编辑的覆盖物
-      status: 0,
-      keyHandler: {}
+      status: 0
     }
   },
   computed: {
@@ -120,22 +125,21 @@ export default {
     // 键盘事件
     handleKey (e) {
       const key = e.key
-      if (this.keyHandler[key]) {
-        console.log(this.keyHandler[key])
-        for (const callback of this.keyHandler[key].values()) {
+      if (keyHandler[key]) {
+        for (const callback of keyHandler[key].values()) {
           callback()
         }
       }
     },
     addKeyHandler (key, callback) {
-      if (!this.keyHandler[key]) {
-        this.keyHandler[key] = new Set()
+      if (!keyHandler[key]) {
+        keyHandler[key] = new Set()
       }
-      this.keyHandler[key].add(callback)
+      keyHandler[key].add(callback)
     },
     removeKeyHandler (key, callback) {
-      if (this.keyHandler[key]) {
-        this.keyHandler[key].delete(callback)
+      if (keyHandler[key]) {
+        keyHandler[key].delete(callback)
       }
     },
     // 初始化
@@ -143,49 +147,37 @@ export default {
       wrapElem = this.$refs.wrap
       cElem = this.$refs.canvas
       sandbox = new CanLib.Sandbox(cElem, { width: 1000, height: 1000 })
-      axisHelper = new CanLib.AxisHelper({
-        sandbox,
-        x: 0,
-        y: 0,
-        width: 1 / this.scale,
-        color: '#fff'
-      })
-      sandbox.addAttachment(axisHelper)
+      // 鼠标移动设置当前坐标
       sandbox.on('mousemove', this.setCoord, {
         permeate: true
       })
+      // 设置光标
       sandbox.on('mousemove', this.setCursorDefault)
+      // 拖动和缩放，在canvas之外也应触发，因此绑定在父级DOM元素上
       wrapElem.addEventListener('mousedown', this.judgeDrag)
-      // 滚轮缩放，在canvas之外也应触发，因此绑定在父级DOM元素上
       wrapElem.addEventListener('mousewheel', this.handleMouseWheel)
+      // 销毁
       this.addKeyHandler('d', this.destroyCanvas)
     },
+    setCoord (e) {
+      this.curX = e[0]
+      this.curY = e[1]
+    },
+    setCursorDefault (e) {
+      this.canvasCursor = 'default'
+    },
+    setCursorPointer () {
+      this.canvasCursor = 'pointer'
+    },
+    setCursorMove () {
+      this.canvasCursor = 'move'
+    },
+    // 销毁整个canvas
     destroyCanvas () {
       sandbox.destroy()
+      wrapElem.removeEventListener('mousedown', this.judgeDrag)
+      wrapElem.removeEventListener('mousewheel', this.handleMouseWheel)
       document.removeEventListener('keyup', this.handleKey)
-    },
-    handleMouseWheel (e) {
-      e.preventDefault()
-      const delta = e.wheelDelta
-      if (delta > 0) {
-        const scale = this.scale + 0.25
-        if (scale < this.initialScale * 10) {
-          this.scale = scale
-        } else {
-          this.scale = this.initialScale * 10
-        }
-      } else if (delta < 0 && this.scale > this.initialScale) {
-        const scale = this.scale - 0.25
-        if (scale > this.initialScale) {
-          this.scale = scale
-        } else {
-          this.scale = this.initialScale
-        }
-      }
-      [...tempItems, ...ctrlItems].forEach(c => {
-        c.radius = 6 / this.scale
-      })
-      axisHelper.width = 1 / this.scale
     },
     // 拖动画布
     judgeDrag (e) {
@@ -210,34 +202,53 @@ export default {
       wrapElem.removeEventListener('mouseup', this.stopMoveCanvas)
       wrapElem.removeEventListener('mouseleave', this.stopMoveCanvas)
     },
+    // 缩放
+    handleMouseWheel (e) {
+      e.preventDefault()
+      const delta = e.wheelDelta
+      if (delta > 0) {
+        const scale = this.scale + 0.25
+        if (scale < this.initialScale * 10) {
+          this.scale = scale
+        } else {
+          this.scale = this.initialScale * 10
+        }
+      } else if (delta < 0 && this.scale > this.initialScale) {
+        const scale = this.scale - 0.25
+        if (scale > this.initialScale) {
+          this.scale = scale
+        } else {
+          this.scale = this.initialScale
+        }
+      }
+      [...tempItems, ...ctrlItems].forEach(c => {
+        c.radius = 6 / this.scale
+      })
+    },
     // 画背景图
     initBgImage (src) {
-      return new Promise((resolve, reject) => {
-        const image = document.createElement('img')
-        image.onload = () => {
-          this.width = image.width
-          this.height = image.height
-          this.initialWidth = image.width
-          this.initialHeight = image.height
-          sandbox.width = this.width
-          cElem.width = this.width
-          sandbox.height = this.height
-          cElem.height = this.height
-          this.wrapHeight = 1000 / this.width * this.height
-          this.scale = 1000 / this.width
-          axisHelper.width = 1 / this.scale
-          this.initialScale = this.scale
-          // this.bgImg = src
-          // resolve()
-          this.$nextTick(() => {
-            bgImage = new CanLib.Background({ sandbox, x: 0, y: 0, width: this.width, height: this.height, image })
-            sandbox.add(bgImage)
-            resolve()
-          })
-        }
-        image.onerror = reject
-        image.src = src
-      })
+      const image = document.createElement('img')
+      image.onload = () => {
+        this.afterLoadImg(image)
+        this.$nextTick(() => {
+          bgImage = new CanLib.Background({ sandbox, x: 0, y: 0, width: image.width, height: image.height, image })
+          sandbox.add(bgImage)
+        })
+      }
+      image.src = src
+    },
+    afterLoadImg (image) {
+      const width = image.width
+      const height = image.height
+      this.initialWidth = width
+      this.initialHeight = height
+      sandbox.width = width
+      cElem.width = width
+      sandbox.height = height
+      cElem.height = height
+      this.wrapHeight = 1000 / width * height
+      this.scale = 1000 / width
+      this.initialScale = this.scale
     },
     emitUpload () {
       if (this.status !== 0) return
@@ -262,28 +273,15 @@ export default {
       const file = this.$refs.upload.files[0]
       const reader = new FileReader()
       reader.readAsDataURL(file)
-      const loading = message.loading('加载中..', 0)
       reader.onload = (e) => {
         const imgBase64Data = e.target.result
         const image = document.createElement('img')
         image.onload = () => {
-          this.width = image.width
-          this.height = image.height
-          this.initialWidth = image.width
-          this.initialHeight = image.height
-          sandbox.width = this.width
-          sandbox.height = this.height
-          cElem.width = this.width
-          cElem.height = this.height
-          this.wrapHeight = 1000 / this.width * this.height
-          this.scale = 1000 / this.width
-          axisHelper.width = 1 / this.scale
-          this.initialScale = this.scale
+          this.afterLoadImg(image)
           this.$nextTick(() => {
             bgImage.width = this.width
             bgImage.height = this.height
             bgImage.image = image
-            loading()
           })
         }
         image.src = imgBase64Data
@@ -307,18 +305,7 @@ export default {
       }
     },
     initEntities () {
-      const data = [
-        {
-          name: '行人1',
-          data: [[1104, 1434], [1157, 1405], [1253, 1413], [1339, 1455], [1380, 1498], [1324, 1507], [1280, 1496], [1261, 1524], [1278, 1539], [1296, 1608], [1276, 1617], [1282, 1669], [1281, 1695], [1248, 1834], [1248, 1882], [1281, 1929], [1238, 1979], [1180, 1985], [1212, 1921], [1208, 1885], [1158, 1827], [1152, 1787], [1095, 1774], [1125, 1671], [1140, 1671], [1157, 1626], [1182, 1537], [1206, 1522], [1196, 1502], [1199, 1475], [1183, 1471]]
-        },
-        {
-          name: '行人2',
-          data: [[1846, 1487], [1855, 1455], [1886, 1440], [1914, 1451], [1921, 1486], [1917, 1543], [1938, 1574], [1974, 1716], [1990, 1749], [1975, 1767], [1942, 1784], [1953, 1883], [1964, 1976], [1887, 1984], [1792, 1981], [1792, 1959], [1833, 1938], [1831, 1867], [1809, 1865], [1809, 1811], [1833, 1744], [1805, 1733], [1803, 1708], [1841, 1639], [1840, 1599], [1866, 1549], [1856, 1541], [1847, 1515]]
-        }
-
-      ]
-      data.forEach(obj => {
+      initialData.forEach(obj => {
         const et = this.drawPolygon({
           color: 'rgba(100, 155, 255, .7)',
           points: obj.data
@@ -333,21 +320,6 @@ export default {
         })
       })
     },
-    setCoord (e) {
-      this.curX = e[0]
-      this.curY = e[1]
-      axisHelper.x = e[0]
-      axisHelper.y = e[1]
-    },
-    setCursorDefault (e) {
-      this.canvasCursor = 'default'
-    },
-    setCursorPointer () {
-      this.canvasCursor = 'pointer'
-    },
-    setCursorMove () {
-      this.canvasCursor = 'move'
-    },
     // 新建多边形部分
     // 开始新建多边形
     addPolygon () {
@@ -357,7 +329,9 @@ export default {
       sandbox.on('click', this.pickPolygon, {
         permeate: true
       })
-      sandbox.on('contextmenu', this.backstep)
+      sandbox.on('contextmenu', this.backstep, {
+        permeate: true
+      })
       this.addKeyHandler('Enter', this.completePolygon)
     },
     // 左键拾取顶点
@@ -368,7 +342,7 @@ export default {
         x: e[0],
         y: e[1],
         radius: 6 / this.scale,
-        color: '#409eff'
+        color: '#FFFFFF'
       })
       sandbox.add(vertex)
       tempItems.push(vertex)
@@ -391,6 +365,7 @@ export default {
     },
     // 右键回退
     backstep () {
+      console.log('回退')
       if (this.newPoints.length) {
         this.newPoints.pop()
         const vertex = tempItems.pop()
@@ -444,16 +419,17 @@ export default {
       if (this.status !== 0) return
       this.status = 2
       this.newPoints = []
-      sandbox.on('mousedown', this.startRect)
+      sandbox.on('mousedown', this.startRect, {})
     },
     startRect (e) {
+      console.log(e)
       this.newPoints = [e]
       const vertex = new CanLib.Circle({
         sandbox,
         x: e[0],
         y: e[1],
         radius: 6 / this.scale,
-        color: '#409eff'
+        color: '#FFFFFF'
       })
       sandbox.add(vertex)
       tempItems.push(vertex)
@@ -540,7 +516,7 @@ export default {
             x: pos[0],
             y: pos[1],
             radius: 6 / this.scale,
-            color: '#409eff'
+            color: '#FFFFFF'
           })
           circle.vertexIndex = index
           sandbox.add(circle)
@@ -561,7 +537,7 @@ export default {
             x: et[nameArr[0]],
             y: et[nameArr[1]],
             radius: 6 / this.scale,
-            color: '#409eff'
+            color: '#FFFFFF'
           })
           circle.vertexIndex = index
           sandbox.add(circle)

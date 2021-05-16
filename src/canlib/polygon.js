@@ -1,6 +1,9 @@
+import Overlay from './overlay'
+
 export default // 多边形
-class Polygon {
+class Polygon extends Overlay {
   constructor ({ sandbox, points, color, zIndex }) {
+    super()
     this.sandbox = sandbox
     this.ctx = sandbox.ctx
     this.entityType = 'polygon'
@@ -8,7 +11,6 @@ class Polygon {
     this.color = color || '#fff'
     this.zIndex = zIndex || 0
     this.id = this.sandbox.getEntityId()
-    console.log(this.id)
     this.visible = true
     this.judgeBy = 'points'
     this.custom = {}
@@ -29,40 +31,5 @@ class Polygon {
     this.ctx.closePath()
     this.ctx.fill()
     this.ctx.restore()
-  }
-
-  destruct () {
-    this.sandbox.remove(this)
-  }
-
-  on (type, callback, option = {}) {
-    const eventMap = this.sandbox.eventMap[type]
-    if (eventMap) {
-      if (!eventMap.has(this.id)) {
-        eventMap.set(this.id, [])
-      }
-      const callbackSet = eventMap.get(this.id)
-      callbackSet.push({
-        handler: callback,
-        option: option
-      })
-    } else {
-      console.error('事件类型有误')
-    }
-  }
-
-  off (type, callback) {
-    const eventMap = this.sandbox.eventMap[type]
-    if (eventMap) {
-      const callbackSet = eventMap.get(this.id)
-      if (callbackSet) {
-        const index = callbackSet.findIndex(i => i.handler === callback)
-        if (index !== -1) {
-          callbackSet.splice(index, 1)
-        }
-      }
-    } else {
-      console.error('事件类型有误')
-    }
   }
 }

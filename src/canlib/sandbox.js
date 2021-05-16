@@ -1,4 +1,8 @@
 import Util from './util'
+/**
+ * 概念
+ * 实体 = entity = child
+ */
 const eventNames = [
   'click', 'contextmenu', 'mousedown', 'mouseup', 'mousemove', 'mouseleave'
 ]
@@ -22,9 +26,15 @@ export default class Sandbox {
     this.handleEvent = this.handleEvent.bind(this)
     // 每个类型的事件保存为一个Map，Map中key/value为覆盖物的id和callback的Set
 
-    this.eventMap = {}
+    this.eventTypeMap = new Map()
+    /**
+     * 事件结构，三层Map
+     * 第一层，事件类型 eventTypeMap(Map) --> {type: entityIdMap(Map)}
+     * 第二层，实体id   entityIdMap --> {id: callbackMap(Map)}
+     * 第三层，回调函数: 配置项 callbackMap --> {fn: option}
+     */
     eventNames.forEach(name => {
-      this.eventMap[name] = new Map()
+      this.eventTypeMap.set(name, new Map())
       elem.addEventListener(name, this.handleEvent)
     })
     // 每一帧都全部渲染
@@ -50,34 +60,59 @@ export default class Sandbox {
     if (type === 'contextmenu') {
       e.preventDefault()
     }
+    const entityIdMap = this.eventTypeMap.get(type)
     const poi = [e.offsetX.toFixed(2) - 0, e.offsetY.toFixed(2) - 0]
-    const activeChildren = Array.from(this.eventMap[type].keys()).map(id => {
-      return this.children.find(c => c.id === id) || null
-    }).filter(c => {
-      return c && c.visible && (
+    const activeChildren = this.children.filter(c =>
+      /**
+       * 事件判定：
+       * 1. 绑定了事件
+       * 2. 可见
+       * 3. 坐标有效
+       */
+      entityIdMap.has(c.id) &&
+      c.visible &&
+      (
         (c.judgeBy === 'points' && Util.judge(poi, c.points)) ||
-          (c.judgeBy === 'circle' && Util.poiInCircle(poi, [c.x, c.y], c.radius))
+        (c.judgeBy === 'circle' && Util.poiInCircle(poi, [c.x, c.y], c.radius))
       )
-    })
-    const activeChild = activeChildren.reduce((prev, cur) => {
+    )
+    // 获取被点击实体中zIndex最大的，zIndex相同时取后一个
+    const topChild = activeChildren.reduce((prev, cur) => {
       if (prev) {
         return prev.zIndex > cur.zIndex ? prev : cur
       } else {
         return cur
       }
     }, null)
-    if (activeChild) {
-      const callbackSet = this.eventMap[type].get(activeChild.id)
-      for (const item of callbackSet.values()) {
-        item.handler()
+    // 触发其事件
+    if (topChild) {
+      const callbackMap = entityIdMap.get(topChild.id)
+      if (callbackMap) {
+        for (const cb of callbackMap.keys()) {
+          cb()
+        }
       }
     }
-    if (this.eventMap[type].has('sandbox')) {
-      // sandbox本身的事件单独处理
-      const callbackSet = this.eventMap[type].get('sandbox')
-      for (const item of callbackSet.values()) {
-        if (!activeChild || item.option.permeate) {
-          item.handler(poi)
+    // 对于其他被触及的实体，如果设置了渗透permeate，则也会触发事件，但这里没有处理顺序和zIndex
+    activeChildren.forEach(c => {
+      if (c !== topChild) {
+        const callbackMap = entityIdMap.get(c.id)
+        if (callbackMap) {
+          for (const cb of callbackMap.keys()) {
+            const option = callbackMap.get(cb)
+            if (option && option.permeate) {
+              cb()
+            }
+          }
+        }
+      }
+    })
+    const callbackMapOfSandbox = entityIdMap.get('sandbox')
+    if (callbackMapOfSandbox) {
+      for (const cb of callbackMapOfSandbox.keys()) {
+        const option = callbackMapOfSandbox.get(cb)
+        if (!topChild || (option && option.permeate)) {
+          cb(poi)
         }
       }
     }
@@ -105,16 +140,13 @@ export default class Sandbox {
 
   // 添加事件绑定
   on (type, callback, option = {}) {
-    const eventMap = this.eventMap[type]
-    if (eventMap) {
-      if (!eventMap.has('sandbox')) {
-        eventMap.set('sandbox', [])
+    const entityIdMap = this.eventTypeMap.get(type)
+    if (entityIdMap) {
+      if (!entityIdMap.has('sandbox')) {
+        entityIdMap.set('sandbox', new Map())
       }
-      const callbackSet = eventMap.get('sandbox')
-      callbackSet.push({
-        handler: callback,
-        option: option
-      })
+      const callbackMap = entityIdMap.get('sandbox')
+      callbackMap.set(callback, option)
     } else {
       console.error('事件类型有误')
     }
@@ -122,14 +154,11 @@ export default class Sandbox {
 
   // 移除事件绑定
   off (type, callback) {
-    const eventMap = this.eventMap[type]
-    if (eventMap) {
-      const callbackSet = eventMap.get('sandbox')
-      if (callbackSet) {
-        const index = callbackSet.findIndex(i => i.handler === callback)
-        if (index !== -1) {
-          callbackSet.splice(index, 1)
-        }
+    const entityIdMap = this.eventTypeMap.get(type)
+    if (entityIdMap) {
+      const callbackMap = entityIdMap.get('sandbox')
+      if (callbackMap && callbackMap.has(callback)) {
+        callbackMap.delete(callback)
       }
     } else {
       console.error('事件类型有误')
