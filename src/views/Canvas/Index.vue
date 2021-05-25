@@ -1,6 +1,21 @@
 <template>
   <div class="label-page">
-    <section class="ctrl-section">
+    <section class="canvas-section">
+      <div class="tip-wrap">
+        <p class="tip">{{ tip }}</p>
+        <p>当前坐标 {{ curX }}，{{ curY }}</p>
+        <p>当前缩放 {{ parseInt(scale * 100) }}%</p>
+        <p>原始尺寸 {{ initialWidth }} × {{ initialHeight }}</p>
+      </div>
+      <div class="wrap" ref="wrap" :style="{height: wrapHeight + 'px'}">
+        <canvas ref="canvas"
+          :style="{
+            transform: `scale(${scale}) translate(${transX}px, ${transY}px)`,
+            cursor: canvasCursor
+          }"></canvas>
+      </div>
+    </section>
+    <section class="data-section">
       <div class="ctrls">
         <div class="btn" @click="emitUpload">
           替换图片
@@ -10,23 +25,6 @@
         <div class="btn" @click="addRect">画矩形</div>
         <div class="btn" @click="resetPosition">初始位置</div>
       </div>
-    </section>
-    <section class="canvas-section">
-      <div class="wrap" ref="wrap" :style="{height: wrapHeight + 'px'}">
-        <canvas ref="canvas"
-          :style="{
-            transform: `scale(${scale}) translate(${transX}px, ${transY}px)`,
-            cursor: canvasCursor
-          }"></canvas>
-      </div>
-      <div class="tip-wrap">
-        <p class="tip">{{ tip }}</p>
-        <p>当前坐标 {{ curX }}，{{ curY }}</p>
-        <p>当前缩放 {{ parseInt(scale * 100) }}%</p>
-        <p>原始尺寸 {{ initialWidth }} × {{ initialHeight }}</p>
-      </div>
-    </section>
-    <section class="data-section">
       <div class="data-item"
         v-for="(item, index) in entities"
         :key="index"
@@ -36,17 +34,15 @@
         <div class="checkbox" :class="{
           'is-checked': item.visible
         }"
-        @click="setVisible(item)"></div>
-        <div>
-          <p>类型：{{ nameDic[item.entityType] }}</p>
-          <p>顶点：{{ JSON.stringify(item.points) }}</p>
-        </div>
+          @click="setVisible(item)"></div>
+        <p class="index">{{ index + 1 }}</p>
+        <p>{{ nameDic[item.entityType] }}</p>
+        <p class="last-btn" @click="alertInfo(JSON.stringify(item.points))">查看数据</p>
       </div>
     </section>
   </div>
 </template>
 <script>
-import { Modal } from 'ant-design-vue'
 import CanLib from '@/canlib/index'
 const initialData = [
   {
@@ -252,19 +248,7 @@ export default {
     },
     emitUpload () {
       if (this.status !== 0) return
-      Modal.confirm({
-        title: '替换图片',
-        content: '标注数据将被清空，确定已保存数据',
-        okText: '确定',
-        cancelText: '取消',
-        onOk: () => {
-          // Modal.destroyAll()
-          this.$refs.upload.dispatchEvent(new MouseEvent('click'))
-        },
-        onCancel () {
-          console.log('Cancel')
-        }
-      })
+      this.$refs.upload.dispatchEvent(new MouseEvent('click'))
     },
     setImage () {
       this.resetData()
@@ -605,6 +589,9 @@ export default {
         sandbox.remove(c)
       })
       ctrlItems.length = 0
+    },
+    alertInfo (info) {
+      alert(info)
     }
   }
 }
@@ -613,22 +600,9 @@ export default {
 .label-page {
   font-size: 14px;
   display: flex; align-items: flex-start;
-  .ctrl-section {
-    width: 120px;
-    .ctrls {
-      text-align: center;
-      .btn {
-        margin: 20px auto;
-        width: 80px; height: 30px; line-height: 30px;
-        background: #409eff; color: #fff;
-        font-size: 12px;
-        border-radius: 3px;
-        cursor: pointer; user-select: none;
-      }
-    }
-  }
+  --theme: #409eff;
   .canvas-section {
-    width: 1002px;
+    width: 1000px;
     .tip-wrap {
       display: flex; justify-content: flex-end;
       height: 40px; line-height: 40px;
@@ -638,7 +612,6 @@ export default {
       .tip {
         margin-left: 0;
         margin-right: auto;
-        color: #3333ff;
         font-weight: bold;
         text-align: left;
       }
@@ -646,8 +619,14 @@ export default {
     .wrap {
       display: block;
       width: 1000px;
+      background-color: #e8e8e8;
+      --size: 20px;
+      --color: #c2c2c2;
+      background-image: linear-gradient(45deg, var(--color) 25%, transparent 25%, transparent 75%, var(--color) 75%, var(--color)),
+        linear-gradient(45deg, var(--color) 25%, transparent 25%, transparent 75%, var(--color) 75%, var(--color));
+      background-size: var(--size) var(--size);
+      background-position: 0 0, calc(var(--size) / 2) calc(var(--size) / 2);
       overflow: hidden;
-      border: 1px solid #333;
       display: flex; justify-content: center; align-items: center;
       canvas {
         display: block;
@@ -656,31 +635,50 @@ export default {
     }
   }
   .data-section {
-    width: calc(100% - 1142px);
-    margin-left: 20px;
-    padding-top: 30px;
-    text-align: left;
+    width: calc(100% - 1000px);
+    max-width: 360px;
+    padding: 0 10px;
+    box-sizing: border-box;
+    .ctrls {
+      height: 40px;
+      display: flex; justify-content: space-between; align-items: center;
+      .btn {
+        width: 70px; height: 24px; line-height: 24px;
+        background: var(--theme); color: #fff;
+        font-size: 12px;
+        border-radius: 2px;
+        cursor: pointer; user-select: none;
+      }
+    }
     .data-item {
       margin-bottom: 5px;
-      padding: 5px;
-      border: 2px solid #fff;
-      display: flex;
+      height: 30px;
+      display: flex; align-items: center;
       &.active {
-        border-color: #409eff;
+        background-color: #B1D6FC;
       }
       .checkbox {
-        margin-right: 14px;
         position: relative;
         width: 14px; height: 14px;
-        border: 1px solid #e2e2e2;
-        border-radius: 2px;
+        box-shadow: 0px 0px 2px var(--theme);
         cursor: pointer;
         &.is-checked::after {
           content: '';
           position: absolute; top: 2px; left: 2px;
           width: 10px; height: 10px;
-          background: green;
+          background: var(--theme);
         }
+      }
+      .index {
+        width: 20px;
+        margin: 0 5px;
+      }
+      .last-btn {
+        margin-left: auto;
+        color: var(--theme);
+        cursor: pointer;
+        text-decoration: underline;
+        user-select: none;
       }
     }
   }
