@@ -2,12 +2,21 @@
   <div class="label-page">
     <section class="canvas-section">
       <div class="tip-wrap">
-        <p class="tip">{{ tip }}</p>
-        <p>当前坐标 {{ curX }}，{{ curY }}</p>
-        <p>当前缩放 {{ parseInt(scale * 100) }}%</p>
-        <p>原始尺寸 {{ initialWidth }} × {{ initialHeight }}</p>
+        <p class="status-tip">{{ tip }}</p>
+        <p class="other-tip">当前坐标 {{ curX }}，{{ curY }}</p>
+        <p class="other-tip">当前缩放 {{ parseInt(scale * 100) }}%</p>
+        <div class="other-tip">
+          <label for="checkbox">显示辅助线</label>
+          <input id="checkbox" type="checkbox" v-model="showAxisHelper">
+        </div>
+        <p class="other-tip">原始尺寸 {{ initialWidth }} × {{ initialHeight }}</p>
       </div>
-      <div class="wrap" ref="wrap" :style="{height: wrapHeight + 'px'}">
+      <div class="wrap" ref="wrap" :style="{height: wrapHeight + 'px'}"
+        @mousemove="setMouse">
+        <div v-if="showAxisHelper" class="axis-helper-x"
+          :style="{top: mouseTop + 'px'}"></div>
+        <div v-if="showAxisHelper" class="axis-helper-y"
+          :style="{left: mouseLeft + 'px'}"></div>
         <canvas ref="canvas"
           :style="{
             transform: `scale(${scale}) translate(${transX}px, ${transY}px)`,
@@ -64,9 +73,13 @@ const tempItems = [] // 绘制途中产生的临时点线
 const rectVertexArr = [['xmin', 'ymin'], ['xmax', 'ymax']] // 矩形的控制点名称
 let tempVertex = []
 const keyHandler = {}
+let time = new Date().getTime()
 export default {
   data () {
     return {
+      showAxisHelper: true,
+      mouseTop: 0,
+      mouseLeft: 0,
       bgImg: '',
       transX: 0,
       transY: 0,
@@ -118,6 +131,14 @@ export default {
     this.initEntities()
   },
   methods: {
+    setMouse (e) {
+      const now = new Date().getTime()
+      if (now - time > 16) {
+        time = now
+        this.mouseLeft = e.x
+        this.mouseTop = e.y - 40
+      }
+    },
     // 键盘事件
     handleKey (e) {
       const key = e.key
@@ -604,19 +625,24 @@ export default {
   .canvas-section {
     width: 1000px;
     .tip-wrap {
-      display: flex; justify-content: flex-end;
-      height: 40px; line-height: 40px;
-      p {
-        margin-left: 40px;
-      }
-      .tip {
-        margin-left: 0;
+      display: flex; justify-content: flex-end; align-items: center;
+      height: 40px;
+      .status-tip {
+        margin-left: 10px;
         margin-right: auto;
         font-weight: bold;
         text-align: left;
       }
+      .other-tip {
+        margin-left: 20px;
+        input {
+          display: inline-block;
+          margin: 3px 0 0 2px;
+        }
+      }
     }
     .wrap {
+      position: relative;
       display: block;
       width: 1000px;
       background-color: #e8e8e8;
@@ -631,6 +657,20 @@ export default {
       canvas {
         display: block;
         background-size: 100% 100%;
+      }
+      .axis-helper-x, .axis-helper-y {
+        position: absolute; z-index: 1;
+        pointer-events: none;
+      }
+      .axis-helper-x {
+        left: 0;
+        width: 100%; height: 0;
+        border-bottom: 1px solid #fff;
+      }
+      .axis-helper-y {
+        top: 0;
+        width: 0; height: 100%;
+        border-right: 1px solid #fff;
       }
     }
   }
