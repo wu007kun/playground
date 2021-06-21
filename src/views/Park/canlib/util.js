@@ -66,7 +66,8 @@ export default class Util {
   }
 }
 export const rotatePoint = ([x0, y0], [x, y], degree) => {
-  const x1 = (x - x0) * Math.cos(degree) + (y - y0) * Math.sin(degree) + x0
-  const y1 = (y - y0) * Math.cos(degree) - (x - x0) * Math.sin(degree) + y0
+  degree = degree * Math.PI / 180
+  const x1 = (x - x0) * Math.cos(degree) - (y - y0) * Math.sin(degree) + x0
+  const y1 = (x - x0) * Math.sin(degree) + (y - y0) * Math.cos(degree) + y0
   return [x1, y1]
 }
