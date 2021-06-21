@@ -3,17 +3,22 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 const routes = [
   {
     path: '/',
-    redirect: '/park'
+    redirect: '/parkConfig'
   },
   {
-    path: '/canvas',
-    name: 'canvas',
-    component: () => import('../views/Canvas/Index.vue')
+    path: '/label',
+    name: 'label',
+    component: () => import('../views/Label/Index.vue')
   },
   {
-    path: '/park',
-    name: 'park',
-    component: () => import('../views/Park/Index.vue')
+    path: '/parkConfig',
+    name: 'parkConfig',
+    component: () => import('../views/Park/Config.vue')
+  },
+  {
+    path: '/parkShow',
+    name: 'parkShow',
+    component: () => import('../views/Park/Show.vue')
   }
 ]
 

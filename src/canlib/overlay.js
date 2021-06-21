@@ -1,5 +1,4 @@
-export default // 多边形
-class Overlay {
+export default class Overlay {
   destruct () {
     this.sandbox.remove(this)
   }

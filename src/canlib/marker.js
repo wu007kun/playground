@@ -20,11 +20,11 @@ export default class Marker extends Overlay {
   get points () {
     const rectPoints = [
       [this.x - this.width / 2, this.y - this.height / 2],
-      [this.x + this.width / 2, this.y - this.height / 2],
-      [this.x + this.width / 2, this.y + this.height / 2],
-      [this.x - this.width / 2, this.y + this.height / 2]
+      [this.x - 0 + this.width / 2, this.y - this.height / 2],
+      [this.x - 0 + this.width / 2, this.y - 0 + this.height / 2],
+      [this.x - this.width / 2, this.y - 0 + this.height / 2]
     ]
-    const result = rectPoints.map(start => rotatePoint([this.x, this.y], start, this.rotate))
+    const result = rectPoints.map(start => rotatePoint([this.x - 0, this.y - 0], start, this.rotate - 0))
     return result
   }
 

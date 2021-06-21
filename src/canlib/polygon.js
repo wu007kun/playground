@@ -21,7 +21,7 @@ class Polygon extends Overlay {
     this.ctx.save()
     this.ctx.fillStyle = this.color
     this.ctx.beginPath()
-    this.ctx.moveTo(...this.points[0])
+    this.ctx.moveTo(...(this.points[0]))
     for (let i = 1; i < this.points.length; i++) {
       const arr = this.points[i]
       if (arr.length === 2) {

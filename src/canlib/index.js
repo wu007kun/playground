@@ -4,6 +4,7 @@ import Rect from './rect'
 import Circle from './circle'
 import Util from './util'
 import Marker from './marker'
+import Line from './line'
 import Background from './background'
 
 export default {
@@ -13,5 +14,6 @@ export default {
   Rect,
   Circle,
   Polygon,
+  Line,
   Util
 }

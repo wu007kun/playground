@@ -13,10 +13,10 @@ function * idGenerator () {
 }
 const idIterator = idGenerator()
 export default class Sandbox {
-  constructor (elem, { width, height, render }) {
+  constructor (elem, { width, height, enableAutoRender }) {
     this.freezeClick = false
     this.elem = elem
-    this.render = render
+    this.enableAutoRender = enableAutoRender
     this.ctx = elem.getContext('2d')
     this.ctx.fillStyle = 'rgba(255, 255, 255, 0)'
     this.width = width
@@ -38,12 +38,12 @@ export default class Sandbox {
       this.eventTypeMap.set(name, new Map())
       elem.addEventListener(name, this.handleEvent)
     })
-    // 每一帧都全部渲染
     this.renderAll()
+    this.autoRender()
   }
 
   destroy () {
-    this.render = false
+    this.enableAutoRender = false
     this.children.length = 0
     this.attachment.length = 0
     eventNames.forEach(name => {
@@ -58,16 +58,12 @@ export default class Sandbox {
   // 事件处理
   handleEvent (e) {
     const type = e.type
-    if (type === 'click') {
-      console.log('点击', e)
-    }
     // 拖动不触发点击
     if (type === 'mousemove') {
       this.freezeClick = true
     } else if (type === 'mousedown') {
       this.freezeClick = false
     } else if (type === 'click' && this.freezeClick) {
-      console.log('不让触发')
       return
     }
     if (type === 'contextmenu') {
@@ -107,11 +103,6 @@ export default class Sandbox {
         }
       }
     }
-    if (type === 'click') {
-      console.log(poi)
-      console.log(activeChildren)
-      console.log('顶部', topChild)
-    }
     // 对于其他被触及的实体，如果设置了渗透permeate，则也会触发事件，但这里没有处理顺序和zIndex
     activeChildren.forEach(c => {
       if (c !== topChild) {
@@ -126,6 +117,7 @@ export default class Sandbox {
         }
       }
     })
+    // 处理sandbox的点击
     const callbackMapOfSandbox = entityIdMap.get('sandbox')
     if (callbackMapOfSandbox) {
       for (const cb of callbackMapOfSandbox.keys()) {
@@ -192,8 +184,12 @@ export default class Sandbox {
     copy.forEach(item => {
       item.render()
     })
-    if (this.render) {
-      requestAnimationFrame(this.renderAll.bind(this))
+  }
+
+  autoRender () {
+    if (this.enableAutoRender) {
+      this.renderAll()
     }
+    requestAnimationFrame(this.autoRender.bind(this))
   }
 }

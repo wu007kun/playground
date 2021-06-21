@@ -293,53 +293,17 @@
         </div>
       </div>
     </div>
-    <loading :loading="loading"></loading>
+    <!-- <Loading :loading="loading"></Loading> -->
   </div>
 </template>
 <script>
 import { getList, updateInfo, addInfo, deleteInfo } from './api'
-import CanLib from './canlib/index'
+import CanLib from '../../canlib/index'
+import park1 from './assets/park.jpg'
+import park2 from './assets/park2.jpg'
 import carImg1 from './assets/car1.png'
 import carImg2 from './assets/car2.png'
 import busImg from './assets/bus1.png'
-const dic = {
-  id: {
-    key: 'id',
-    handler: (val) => val
-  },
-  field01: {
-    key: 'park',
-    handler: (val) => Number(val)
-  },
-  field02: {
-    key: 'x',
-    handler: (val) => Number(val)
-  },
-  field03: {
-    key: 'y',
-    handler: (val) => Number(val)
-  },
-  field04: {
-    key: 'width',
-    handler: (val) => Number(val)
-  },
-  field05: {
-    key: 'height',
-    handler: (val) => Number(val)
-  },
-  field06: {
-    key: 'rotate',
-    handler: (val) => Number(val)
-  },
-  field07: {
-    key: 'type',
-    handler: (val) => Number(val)
-  },
-  field08: {
-    key: 'deviceID',
-    handler: (val) => val
-  }
-}
 
 let wrapElem = null
 let cElem = null
@@ -361,7 +325,7 @@ function computeSplitPoints (start, end, count) {
 }
 export default {
   components: {
-    Loading: () => import('./Loading.vue')
+    // Loading: () => import('./Loading.vue')
   },
   data () {
     return {
@@ -386,7 +350,18 @@ export default {
       curY: 0,
       // 停车场业务相关
       currentPark: {}, // 当前的停车场
-      parkImage: [], // 存储不同停车场的信息
+      parkImage: [
+        {
+          id: 1,
+          src: park1,
+          name: '1号停车场'
+        },
+        {
+          id: 2,
+          src: park2,
+          name: '2号停车场'
+        }
+      ], // 存储不同停车场的信息
       allCarsInfo: [], // 存储当前停车场的车位信息
       activeMarker: null, // 当前选择的车位marker
       activeInfo: { // 当前选择的车位信息
@@ -411,14 +386,10 @@ export default {
     }
   },
   async mounted () {
-    // 冻结Cesium，节省性能
-    window.sandbox.viewer.scene.requestRenderMode = true
-    window.sandbox.viewer.useDefaultRenderLoop = false
     const pageDom = this.$refs.page
     this.pageWidth = pageDom.clientWidth
     this.pageHeight = pageDom.clientHeight
     this.initCanvas()
-    this.parkImage = config.parkImage
     if (this.parkImage.length) {
       this.initBgImage(this.parkImage[0].src)
     } else {
@@ -428,10 +399,8 @@ export default {
     await this.loadCarImage()
     this.setExistCar(this.parkImage[0].id)
   },
-  beforeDestroy () {
+  beforeUnmount () {
     this.destroyCanvas()
-    window.sandbox.viewer.scene.requestRenderMode = false
-    window.sandbox.viewer.useDefaultRenderLoop = true
   },
   methods: {
     // 创建一个汽车图标
@@ -439,7 +408,7 @@ export default {
       const marker = new CanLib.Marker({
         sandbox,
         ...info,
-        image: info.type === 1 ? carTypes.car : carTypes.bus
+        image: info.type - 0 === 1 ? carTypes.car : carTypes.bus
       })
       sandbox.add(marker)
       return marker
@@ -531,21 +500,14 @@ export default {
       this.clearCars()
       getList({
         park: id // 北停车场
-      }).then((res) => {
-        const data = res.data
+      }).then((data) => {
         for (const item of data) {
-          const params = Object.fromEntries(
-            Object.keys(dic).map((key) => {
-              return [dic[key].key, dic[key].handler(item[key])]
-            })
-          )
+          const params = item
           this.allCarsInfo.push(params)
           const marker = this.drawCar(params)
           carMap.set(item.id, marker)
           marker.on('click', () => {
             this.handleClickCar(params.id)
-          }, {
-            // permeate: true
           })
         }
         setTimeout(() => {
@@ -617,7 +579,7 @@ export default {
           sandbox,
           points: JSON.parse(JSON.stringify(marker.points)),
           color: 'rgba(40, 150, 220, .4)',
-          zIndex: 3
+          zIndex: 4
         })
         sandbox.add(highlightBorder)
       } else {
@@ -755,11 +717,11 @@ export default {
         this.lineEnd = { x: e[0], y: e[1] }
         this.createLineMarker()
         sandbox.on('mousemove', this.moveLine)
-        sandbox.render = true
+        sandbox.enableAutoRender = true
       } else {
         sandbox.off('click', this.pickEndpoint)
         sandbox.off('mousemove', this.moveLine)
-        sandbox.render = false
+        sandbox.enableAutoRender = false
       }
     },
     createLineMarker () {
@@ -904,10 +866,9 @@ export default {
 </script>
 <style lang="less">
 .park-status-config {
-  position: absolute;
-  top: 80px; left: 0; bottom: 0;
-  width: 100%;
+  width: 100%; height: 100%;
   background: #333;
+  color: #fff;
   user-select: none;
   --theme: #409eff;
   --bg: rgba(0, 0, 0, .8);
@@ -931,7 +892,7 @@ export default {
     position: relative;
     display: block;
     --size: 20px;
-    --color: #17466D;
+    --color: #555;
     background-image: linear-gradient(45deg, var(--color) 25%, transparent 25%, transparent 75%, var(--color) 75%, var(--color)),
       linear-gradient(45deg, var(--color) 25%, transparent 25%, transparent 75%, var(--color) 75%, var(--color));
     background-size: var(--size) var(--size);

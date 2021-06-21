@@ -14,13 +14,17 @@
         实时剩余车位
         <p class="park-data"><span class="highlight">{{ totalCount - currentCount }}</span> / {{ totalCount }}</p>
       </div>
-      <div class="reset-btn" @click="resetPosition">初始位置</div>
+      <div>
+        <div class="reset-btn" @click="updateStatus">更新状态</div>
+        <div class="reset-btn" @click="resetPosition">初始位置</div>
+      </div>
+
     </div>
   </div>
 </template>
 <script>
-import { getList, getStatus } from './api'
-import CanLib from './canlib/index'
+import { getList } from './api'
+import CanLib from '../../canlib/index'
 import carImg1 from './assets/car1.png'
 import carImg2 from './assets/car2.png'
 import carImg3 from './assets/car3.png'
@@ -34,44 +38,6 @@ import carImg10 from './assets/car10.png'
 import carImg11 from './assets/car11.png'
 import busImg1 from './assets/bus1.png'
 import busImg2 from './assets/bus2.png'
-const dic = {
-  id: {
-    key: 'id',
-    handler: val => val
-  },
-  field01: {
-    key: 'park',
-    handler: val => Number(val)
-  },
-  field02: {
-    key: 'x',
-    handler: val => Number(val)
-  },
-  field03: {
-    key: 'y',
-    handler: val => Number(val)
-  },
-  field04: {
-    key: 'width',
-    handler: val => Number(val)
-  },
-  field05: {
-    key: 'height',
-    handler: val => Number(val)
-  },
-  field06: {
-    key: 'rotate',
-    handler: val => Number(val)
-  },
-  field07: {
-    key: 'type',
-    handler: val => Number(val)
-  },
-  field08: {
-    key: 'deviceID',
-    handler: val => val
-  }
-}
 let wrapElem = null
 let cElem = null
 let sandbox = null // 画布
@@ -113,9 +79,6 @@ export default {
     }
   },
   async mounted () {
-    // 冻结Cesium，节省性能
-    window.sandbox.viewer.scene.requestRenderMode = true
-    window.sandbox.viewer.useDefaultRenderLoop = false
     const pageDom = this.$refs.page
     this.pageWidth = pageDom.clientWidth
     this.pageHeight = pageDom.clientHeight
@@ -126,12 +89,8 @@ export default {
     await this.setExistCar()
     this.updateStatus()
   },
-  beforeDestroy () {
-    this.timer && clearTimeout(this.timer)
+  beforeUnmount () {
     this.destroyCanvas()
-    // 冻结Cesium，节省性能
-    window.sandbox.viewer.scene.requestRenderMode = false
-    window.sandbox.viewer.useDefaultRenderLoop = true
   },
   methods: {
     loadImages () {
@@ -164,14 +123,10 @@ export default {
     },
     setExistCar () {
       return getList({
-        park: '1' // 北停车场
-      }).then(res => {
-        this.totalCount = res.total
-        const data = res.data
-        data.forEach(item => {
-          const params = Object.fromEntries(Object.keys(dic).map(key => {
-            return [dic[key].key, dic[key].handler(item[key])]
-          }))
+        park: 1 // 北停车场
+      }).then(data => {
+        this.totalCount = data.length
+        data.forEach(params => {
           const marker = this.drawCar(params)
           marker.visible = false
           carMap.set(params.deviceID, marker)
@@ -190,27 +145,16 @@ export default {
       return marker
     },
     updateStatus () {
-      this.timer && clearTimeout(this.timer)
-      getStatus().then(res => {
-        const data = res.data.data
-        let n = 0
-        Array.from(carMap.entries()).forEach(([deviceID, marker]) => {
-          const item = data.find(i => i.deviceID === deviceID)
-          if (item && item.parkingStatu === '1') {
-            marker.visible = true
-            n++
-          } else {
-            marker.visible = false
-          }
-        })
-        this.currentCount = n
-        setTimeout(() => {
-          this.updateRender()
-        }, 1000)
-        this.timer = setTimeout(() => {
-          this.updateStatus()
-        }, 5 * 60 * 1000)
-      })
+      let n = 0
+      for (const marker of carMap.values()) {
+        const visible = Math.round(Math.random())
+        if (visible) {
+          n++
+        }
+        marker.visible = Boolean(visible)
+      }
+      this.currentCount = n
+      this.updateRender()
     },
     // 销毁整个canvas
     destroyCanvas () {
@@ -304,20 +248,16 @@ export default {
 </script>
 <style lang="less">
 .park-status {
-  position: absolute;
-  top: 80px; bottom: 0; left: 0;
-  width: 100%;
+  width: 100%; height: 100%;
   user-select: none;
-  background-color: #053960;
-  // .canvas-section {
-
-  // }
+  background-color: #333;
+  --bg: rgba(0, 0, 0, .8);
   .wrap {
     margin: 0 auto;
     position: relative;
     display: block;
     --size: 20px;
-    --color: #17466D;
+    --color: #555;
     background-image: linear-gradient(45deg, var(--color) 25%, transparent 25%, transparent 75%, var(--color) 75%, var(--color)),
       linear-gradient(45deg, var(--color) 25%, transparent 25%, transparent 75%, var(--color) 75%, var(--color));
     background-size: var(--size) var(--size);
@@ -333,7 +273,7 @@ export default {
   .data-panel {
     position: absolute; top: 0; right: 0;
     width: 300px;
-    background: rgba(23,70,109, .9);
+    background: var(--bg);
     color: #fff;
     .title {
       margin: 10px 0;
@@ -350,11 +290,12 @@ export default {
     }
     .reset-btn {
       display: inline-block;
-      margin: 20px auto;
+      margin: 20px 10px;
       padding: 3px 10px;
       background-color: #409eff;
       border-radius: 4px;
       font-size: 12px;
+      cursor: pointer;
     }
   }
 }

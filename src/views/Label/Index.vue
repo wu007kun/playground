@@ -26,10 +26,10 @@
     </section>
     <section class="data-section">
       <div class="ctrls">
-        <div class="btn" @click="emitUpload">
+        <!-- <div class="btn" @click="emitUpload">
           替换图片
           <input style="display: none" type="file" ref="upload" @change="setImage">
-        </div>
+        </div> -->
         <div class="btn" @click="addPolygon">画多边形</div>
         <div class="btn" @click="addRect">画矩形</div>
         <div class="btn" @click="resetPosition">初始位置</div>
@@ -53,6 +53,7 @@
 </template>
 <script>
 import CanLib from '@/canlib/index'
+import bgImg from './bg.jpg'
 const initialData = [
   {
     name: '行人1',
@@ -67,7 +68,7 @@ const initialData = [
 let wrapElem = null
 let cElem = null
 let sandbox = null // 画布
-let bgImage = null // 背景图片类
+const bgImage = null // 背景图片类
 const ctrlItems = [] // 被选中的覆盖物的顶点圆
 const tempItems = [] // 绘制途中产生的临时点线
 const rectVertexArr = [['xmin', 'ymin'], ['xmax', 'ymax']] // 矩形的控制点名称
@@ -80,7 +81,6 @@ export default {
       showAxisHelper: true,
       mouseTop: 0,
       mouseLeft: 0,
-      bgImg: '',
       transX: 0,
       transY: 0,
       beginMouseX: 0,
@@ -126,8 +126,7 @@ export default {
   mounted () {
     document.addEventListener('keyup', this.handleKey)
     this.initCanvas()
-    const img = require('./bg.jpg')
-    this.initBgImage(img)
+    this.initBgImage(bgImg)
     this.initEntities()
   },
   methods: {
@@ -163,7 +162,11 @@ export default {
     initCanvas () {
       wrapElem = this.$refs.wrap
       cElem = this.$refs.canvas
-      sandbox = new CanLib.Sandbox(cElem, { width: 1000, height: 1000 })
+      sandbox = new CanLib.Sandbox(cElem, {
+        width: 1000,
+        height: 1000,
+        enableAutoRender: true
+      })
       // 鼠标移动设置当前坐标
       sandbox.on('mousemove', this.setCoord, {
         permeate: true
@@ -198,7 +201,8 @@ export default {
     },
     // 拖动画布
     judgeDrag (e) {
-      if ((this.status !== 0 && this.status !== 3) || this.activeCircle) return
+      const enableStatus = [0, 1, 3]
+      if (enableStatus.indexOf(this.status) === -1 || this.activeCircle) return
       this.beginMouseX = e.clientX
       this.beginMouseY = e.clientY
       this.beginTransX = this.transX
@@ -247,10 +251,7 @@ export default {
       const image = document.createElement('img')
       image.onload = () => {
         this.afterLoadImg(image)
-        this.$nextTick(() => {
-          bgImage = new CanLib.Background({ sandbox, x: 0, y: 0, width: image.width, height: image.height, image })
-          sandbox.add(bgImage)
-        })
+        this.$refs.canvas.style.backgroundImage = `url(${src})`
       }
       image.src = src
     },
