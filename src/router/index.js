@@ -3,7 +3,12 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 const routes = [
   {
     path: '/',
-    redirect: '/parkConfig'
+    redirect: '/menu'
+  },
+  {
+    path: '/menu',
+    name: 'menu',
+    component: () => import('../views/Menu/Index.vue')
   },
   {
     path: '/label',

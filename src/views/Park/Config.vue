@@ -126,7 +126,7 @@
             type="number"
           />
         </div>
-        <div class="data-item" v-if="lineEnd">
+        <div class="data-item" v-if="lineStart">
           <label class="label" for="">起点y</label>
           <input
             v-model.number="lineStart.y"
